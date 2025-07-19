@@ -27,6 +27,7 @@ export function RedLightGreenLight({ onGameEnd, player }: RedLightGreenLightProp
   const [isEliminated, setIsEliminated] = useState(player.isEliminated)
   const [message, setMessage] = useState("")
   const [coins, setCoins] = useLocalStorage<number>("squid-game-coins", 0)
+  const [isRunning, setIsRunning] = useState(false)
 
   const dollRef = useRef<HTMLDivElement>(null)
   const eliminationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -124,33 +125,35 @@ export function RedLightGreenLight({ onGameEnd, player }: RedLightGreenLightProp
     }
   }, [isMoving, gamePhase, progress, isEliminated])
 
-  const handleMoveStart = () => {
+  const toggleRunning = () => {
     if (isEliminated || gamePhase === "waiting" || gamePhase === "finished") return
-    setIsMoving(true)
-    if (gamePhase === "red") {
-      // Immediate elimination for moving during red light
+
+    const newRunningState = !isRunning
+    setIsRunning(newRunningState)
+    setIsMoving(newRunningState)
+
+    if (newRunningState && gamePhase === "red") {
+      // Immediate elimination for starting to run during red light
       setTimeout(() => {
         setIsEliminated(true)
-      }, 200) // Small delay to show the action
+      }, 200)
     }
-  }
-
-  const handleMoveEnd = () => {
-    if (eliminationTimeoutRef.current) {
-      clearTimeout(eliminationTimeoutRef.current)
-      eliminationTimeoutRef.current = null
-    }
-    setIsMoving(false)
   }
 
   useEffect(() => {
-    if (isMoving && gamePhase === "green" && progress < 100) {
+    if (isRunning && gamePhase === "green" && progress < 100 && !isEliminated) {
       const moveInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 1, 100))
-      }, 50) // Increase progress faster
+        setProgress((prev) => {
+          const newProgress = Math.min(prev + 2, 100)
+          if (newProgress >= 100) {
+            setGamePhase("finished")
+          }
+          return newProgress
+        })
+      }, 100)
       return () => clearInterval(moveInterval)
     }
-  }, [isMoving, gamePhase, progress])
+  }, [isRunning, gamePhase, progress, isEliminated])
 
   useEffect(() => {
     if (progress >= 100 && gamePhase !== "finished") {
@@ -215,16 +218,13 @@ export function RedLightGreenLight({ onGameEnd, player }: RedLightGreenLightProp
 
       {gamePhase !== "waiting" && gamePhase !== "finished" && !isEliminated && (
         <Button
-          onMouseDown={handleMoveStart}
-          onMouseUp={handleMoveEnd}
-          onTouchStart={handleMoveStart}
-          onTouchEnd={handleMoveEnd}
+          onClick={toggleRunning}
           className={cn(
             "bg-squidGreen hover:bg-squidGreen/80 text-white font-bold py-4 px-8 text-xl rounded-lg transition-colors duration-300",
-            isMoving && "scale-105 shadow-lg shadow-squidGreen/50",
+            isRunning && "scale-105 shadow-lg shadow-squidGreen/50 bg-squidRed hover:bg-squidRed/80",
           )}
         >
-          {isMoving ? "RUNNING..." : "HOLD TO RUN"}
+          {isRunning ? "🛑 STOP RUNNING" : "🏃‍♂️ START RUNNING"}
         </Button>
       )}
 

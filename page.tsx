@@ -241,19 +241,19 @@ export default function SquidGameWebsite() {
         if (!currentPlayer) return commonEliminatedScreen
         return <RedLightGreenLight onGameEnd={handleGameEnd} player={currentPlayer} />
       case "honeycomb":
-        if (!currentPlayer) return commonEliminatedScreen
+        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <Honeycomb onGameEnd={handleGameEnd} player={currentPlayer} />
       case "tug-of-war":
-        if (!currentPlayer) return commonEliminatedScreen
+        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <TugOfWar onGameEnd={handleGameEnd} player={currentPlayer} />
       case "marbles":
-        if (!currentPlayer) return commonEliminatedScreen
+        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <Marbles onGameEnd={handleGameEnd} player={currentPlayer} />
       case "glass-bridge":
-        if (!currentPlayer) return commonEliminatedScreen
+        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <GlassBridge onGameEnd={handleGameEnd} player={currentPlayer} />
       case "squid-game":
-        if (!currentPlayer) return commonEliminatedScreen
+        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <SquidGame onGameEnd={handleGameEnd} player={currentPlayer} />
       case "game-over":
         return (

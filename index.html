@@ -1021,175 +1021,1010 @@
             );
         };
 
-        // Red Light Green Light Game Component (Enhanced)
-        const RedLightGreenLight = ({ onGameEnd, player }) => {
-            const [gamePhase, setGamePhase] = useState("waiting");
-            const [timer, setTimer] = useState(30);
-            const [roundTimer, setRoundTimer] = useState(0);
-            const [progress, setProgress] = useState(0);
-            const [isMoving, setIsMoving] = useState(false);
-            const [isEliminated, setIsEliminated] = useState(player.isEliminated);
-            const [message, setMessage] = useState("");
-            const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+        // Red Light Green Light Game Component
+const RedLightGreenLightGame = ({ onGameEnd, player }) => {
+  const [gamePhase, setGamePhase] = useState("waiting");
+  const [timer, setTimer] = useState(30);
+  const [roundTimer, setRoundTimer] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isEliminated, setIsEliminated] = useState(player?.isEliminated || false);
+  const [message, setMessage] = useState("");
+  const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
 
-            const dollRef = useRef(null);
-            const eliminationTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (isEliminated) {
+      setMessage("💀 ELIMINATED!");
+      playSound('elimination');
+      onGameEnd(false);
+      return;
+    }
 
-            useEffect(() => {
-                if (isEliminated) {
-                    setMessage("💀 ELIMINATED!");
-                    playSound('elimination');
-                    onGameEnd(false);
-                    return;
-                }
+    if (gamePhase === "finished") {
+      setMessage("🎉 SAFE! You crossed the line.");
+      setCoins(prev => prev + 100);
+      playSound('success');
+      onGameEnd(true);
+      return;
+    }
 
-                if (gamePhase === "finished") {
-                    setMessage("🎉 SAFE! You crossed the line.");
-                    setCoins(prev => prev + 100);
-                    playSound('success');
-                    onGameEnd(true);
-                    return;
-                }
+    let gameInterval = null;
+    if (gamePhase !== "waiting") {
+      gameInterval = setInterval(() => {
+        setTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(gameInterval);
+            if (progress < 100) {
+              setIsEliminated(true);
+            } else {
+              setGamePhase("finished");
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
 
-                let gameInterval = null;
-                if (gamePhase !== "waiting") {
-                    gameInterval = setInterval(() => {
-                        setTimer(prev => {
-                            if (prev <= 1) {
-                                clearInterval(gameInterval);
-                                if (progress < 100) {
-                                    setIsEliminated(true);
-                                } else {
-                                    setGamePhase("finished");
-                                }
-                                return 0;
-                            }
-                            return prev - 1;
-                        });
-                    }, 1000);
-                }
+    return () => {
+      if (gameInterval) clearInterval(gameInterval);
+    };
+  }, [gamePhase, timer, progress, isEliminated, onGameEnd, setCoins]);
 
-                return () => {
-                    if (gameInterval) clearInterval(gameInterval);
-                };
-            }, [gamePhase, timer, progress, isEliminated, onGameEnd, setCoins]);
+  useEffect(() => {
+    if (gamePhase === "waiting" || isEliminated) return;
 
-            const startGame = () => {
-                setGamePhase("green");
-                setTimer(30);
-                setProgress(0);
-                setIsEliminated(false);
-                setMessage("");
-                playSound('success');
-            };
+    let phaseInterval = null;
+    const startPhase = () => {
+      const isGreen = Math.random() > 0.4;
+      const phaseDuration = Math.floor(Math.random() * 4) + 2;
 
-            return (
-                <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
-                    {isEliminated && (
-                        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
-                            <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
-                        </div>
-                    )}
+      setGamePhase(isGreen ? "green" : "red");
+      setRoundTimer(phaseDuration);
+      setMessage(isGreen ? "🟢 GREEN LIGHT! MOVE!" : "🔴 RED LIGHT! STOP!");
 
-                    <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
-                        🎭 Player: #{player.number} {player.name}
-                    </div>
-                    <div className="absolute top-4 right-4 mobile-text-sm md:text-lg font-mono text-squidPink animate-slide-in-right">
-                        ⏰ Time Left: {timer}s
-                    </div>
+      let currentPhaseTime = phaseDuration;
+      phaseInterval = setInterval(() => {
+        currentPhaseTime -= 1;
+        setRoundTimer(currentPhaseTime);
 
-                    <div className="relative w-full max-w-5xl mobile-h-64 md:h-80 bg-gradient-to-r from-squidGreen/20 via-squidPink/10 to-squidRed/20 rounded-xl overflow-hidden mb-6 md:mb-8 border-2 border-squidPink/50 shadow-2xl shadow-squidPink/20 animate-bounce-in">
-                        <div
-                            ref={dollRef}
-                            className={`absolute top-0 right-0 w-20 md:w-32 h-full bg-gradient-to-b from-squidGray to-squidDark flex items-center justify-center mobile-text-3xl md:text-6xl rounded-l-full transition-transform duration-500 animate-squid-pulse`}
-                            style={{ transform: gamePhase === "red" ? "rotateY(180deg)" : "rotateY(0deg)" }}
-                        >
-                            👧
-                        </div>
-                        <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6">
-                            <Progress value={progress} className="w-full mb-2" animated={true} />
-                            <div className="text-center mobile-text-sm md:text-lg text-squidLightGray font-bold">
-                                🏃‍♂️ Progress: {progress.toFixed(0)}%
-                            </div>
-                        </div>
-                    </div>
+        if (currentPhaseTime <= 0) {
+          clearInterval(phaseInterval);
+          if (gamePhase === "red" && isRunning) {
+            setIsEliminated(true);
+            return;
+          }
+          startPhase();
+        }
+      }, 1000);
+    };
 
-                    <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
-                        {message || "🚦 Red Light, Green Light"}
-                    </h2>
+    startPhase();
 
-                    <div className="mobile-text-xl md:text-4xl font-mono text-squidPink mb-6 md:mb-8 animate-bounce-in text-center">
-                        {gamePhase !== "waiting" && gamePhase !== "finished" && `⏱️ Phase Timer: ${roundTimer}s`}
-                    </div>
+    return () => {
+      if (phaseInterval) clearInterval(phaseInterval);
+    };
+  }, [gamePhase === "waiting", isEliminated, isRunning]);
 
-                    {gamePhase === "waiting" && (
-                        <Button
-                            onClick={startGame}
-                            className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
-                            variant="primary"
-                        >
-                            🎬 Start Round
-                        </Button>
-                    )}
+  useEffect(() => {
+    if (isRunning && gamePhase === "green" && progress < 100 && !isEliminated) {
+      const moveInterval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = Math.min(prev + 2, 100);
+          if (newProgress >= 100) {
+            setGamePhase("finished");
+          }
+          return newProgress;
+        });
+      }, 100);
+      return () => clearInterval(moveInterval);
+    }
+  }, [isRunning, gamePhase, progress, isEliminated]);
 
-                    {gamePhase !== "waiting" && gamePhase !== "finished" && !isEliminated && (
-                        <Button
-                            onMouseDown={() => setIsMoving(true)}
-                            onMouseUp={() => setIsMoving(false)}
-                            onTouchStart={() => setIsMoving(true)}
-                            onTouchEnd={() => setIsMoving(false)}
-                            className={`font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl transition-all duration-300 ${isMoving ? "scale-110 animate-pulse" : ""}`}
-                            variant="secondary"
-                        >
-                            {isMoving ? "🏃‍♂️ RUNNING..." : "🖱️ HOLD TO RUN"}
-                        </Button>
-                    )}
+  const toggleRunning = () => {
+    if (isEliminated || gamePhase === "waiting" || gamePhase === "finished") return;
+    
+    const newRunningState = !isRunning;
+    setIsRunning(newRunningState);
+    
+    if (newRunningState && gamePhase === "red") {
+      setTimeout(() => {
+        setIsEliminated(true);
+      }, 200);
+    }
+  };
 
-                    {gamePhase === "finished" && (
-                        <Button
-                            onClick={() => onGameEnd(true)}
-                            className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
-                            variant="accent"
-                        >
-                            ➡️ Continue
-                        </Button>
-                    )}
-                </div>
-            );
-        };
+  const startGame = () => {
+    setGamePhase("green");
+    setTimer(30);
+    setProgress(0);
+    setIsEliminated(false);
+    setIsRunning(false);
+    setMessage("");
+    playSound('success');
+  };
 
-        // Game Over Component
-        const GameOver = ({ message, coins, onPlayAgain, onBackToLobby }) => {
-            return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray screen-transition px-4">
-                    <div className="text-center animate-bounce-in">
-                        <h2 className="mobile-text-4xl md:text-8xl font-bold text-squidRed mb-6 md:mb-8 font-orbitron animate-squid-pulse elimination-glitch">
-                            💀 GAME OVER
-                        </h2>
-                        <p className="mobile-text-xl md:text-3xl text-squidLightGray mb-4 md:mb-6 animate-fade-in">{message}</p>
-                        <p className="mobile-text-lg md:text-2xl text-squidGold mb-8 md:mb-12 animate-slide-in-up">
-                            💰 Your final coins: <span className="font-bold mobile-text-2xl md:text-4xl">{coins}</span>
-                        </p>
-                        <div className="space-y-3 md:space-y-4">
-                            <Button
-                                onClick={onPlayAgain}
-                                className="font-bold py-3 px-6 md:py-4 md:px-8 mobile-text-lg md:text-xl animate-slide-in-left w-full md:w-auto"
-                                variant="secondary"
-                            >
-                                🔄 Play Again
-                            </Button>
-                            <Button
-                                onClick={onBackToLobby}
-                                className="font-bold py-3 px-6 md:py-4 md:px-8 mobile-text-lg md:text-xl animate-slide-in-right w-full md:w-auto"
-                                variant="accent"
-                            >
-                                🏠 Back to Lobby
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+      {isEliminated && (
+        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+          <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
+        🎭 Player: #{player?.number} {player?.name}
+      </div>
+      <div className="absolute top-4 right-4 mobile-text-sm md:text-lg font-mono text-squidPink animate-slide-in-right">
+        ⏰ Time Left: {timer}s
+      </div>
+
+      <div className="relative w-full max-w-5xl mobile-h-64 md:h-80 bg-gradient-to-r from-squidGreen/20 via-squidPink/10 to-squidRed/20 rounded-xl overflow-hidden mb-6 md:mb-8 border-2 border-squidPink/50 shadow-2xl shadow-squidPink/20 animate-bounce-in">
+        <div
+          className={`absolute top-0 right-0 w-20 md:w-32 h-full bg-gradient-to-b from-squidGray to-squidDark flex items-center justify-center mobile-text-3xl md:text-6xl rounded-l-full transition-transform duration-500 animate-squid-pulse`}
+          style={{ transform: gamePhase === "red" ? "rotateY(180deg)" : "rotateY(0deg)" }}
+        >
+          👧
+        </div>
+        <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6">
+          <Progress value={progress} className="w-full mb-2" animated={true} />
+          <div className="text-center mobile-text-sm md:text-lg text-squidLightGray font-bold">
+            🏃‍♂️ Progress: {progress.toFixed(0)}%
+          </div>
+        </div>
+      </div>
+
+      <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+        {message || "🚦 Red Light, Green Light"}
+      </h2>
+
+      <div className="mobile-text-xl md:text-4xl font-mono text-squidPink mb-6 md:mb-8 animate-bounce-in text-center">
+        {gamePhase !== "waiting" && gamePhase !== "finished" && `⏱️ Phase Timer: ${roundTimer}s`}
+      </div>
+
+      {gamePhase === "waiting" && (
+        <Button
+          onClick={startGame}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="primary"
+        >
+          🎬 Start Round
+        </Button>
+      )}
+
+      {gamePhase !== "waiting" && gamePhase !== "finished" && !isEliminated && (
+        <Button
+          onClick={toggleRunning}
+          className={`font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl transition-all duration-300 ${isRunning ? "scale-110 animate-pulse" : ""}`}
+          variant={isRunning ? "primary" : "secondary"}
+        >
+          {isRunning ? "🛑 STOP RUNNING" : "🏃‍♂️ START RUNNING"}
+        </Button>
+      )}
+
+      {gamePhase === "finished" && (
+        <Button
+          onClick={() => onGameEnd(true)}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="accent"
+        >
+          ➡️ Continue
+        </Button>
+      )}
+    </div>
+  );
+};
+
+// Honeycomb Game Component
+const HoneycombGame = ({ onGameEnd, player }) => {
+  const canvasRef = useRef(null);
+  const [selectedShape, setSelectedShape] = useState(null);
+  const [timer, setTimer] = useState(60);
+  const [isTracing, setIsTracing] = useState(false);
+  const [isEliminated, setIsEliminated] = useState(player?.isEliminated || false);
+  const [message, setMessage] = useState("");
+  const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [tracePoints, setTracePoints] = useState([]);
+
+  const shapes = ["circle", "triangle", "star", "umbrella"];
+  const lastPoint = useRef(null);
+  const shapePath = useRef(null);
+
+  const drawShape = useCallback((ctx, shape) => {
+    const centerX = ctx.canvas.width / 2;
+    const centerY = ctx.canvas.height / 2;
+    const size = 80;
+
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.strokeStyle = "#FF007F";
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
+    const path = new Path2D();
+
+    switch (shape) {
+      case "circle":
+        path.arc(centerX, centerY, size, 0, Math.PI * 2);
+        break;
+      case "triangle":
+        path.moveTo(centerX, centerY - size);
+        path.lineTo(centerX + (size * Math.sqrt(3)) / 2, centerY + size / 2);
+        path.lineTo(centerX - (size * Math.sqrt(3)) / 2, centerY + size / 2);
+        path.closePath();
+        break;
+      case "star":
+        const outerRadius = size;
+        const innerRadius = size / 2.5;
+        const numPoints = 5;
+        for (let i = 0; i < numPoints * 2; i++) {
+          const radius = i % 2 === 0 ? outerRadius : innerRadius;
+          const angle = (Math.PI / numPoints) * i - Math.PI / 2;
+          const x = centerX + radius * Math.cos(angle);
+          const y = centerY + radius * Math.sin(angle);
+          if (i === 0) {
+            path.moveTo(x, y);
+          } else {
+            path.lineTo(x, y);
+          }
+        }
+        path.closePath();
+        break;
+      case "umbrella":
+        path.arc(centerX, centerY + size / 4, size, Math.PI, Math.PI * 2);
+        path.moveTo(centerX - size, centerY + size / 4);
+        path.lineTo(centerX - size / 4, centerY + size * 1.5);
+        path.arc(centerX, centerY + size * 1.5, size / 4, Math.PI, Math.PI * 2);
+        path.lineTo(centerX + size / 4, centerY + size * 1.5);
+        path.lineTo(centerX + size, centerY + size / 4);
+        break;
+    }
+    ctx.stroke(path);
+    shapePath.current = path;
+  }, []);
+
+  const checkTraceAccuracy = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !shapePath.current) return false;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return false;
+
+    let insideCount = 0;
+    const totalPoints = tracePoints.length;
+    if (totalPoints === 0) return false;
+
+    for (const point of tracePoints) {
+      if (ctx.isPointInStroke(shapePath.current, point.x, point.y)) {
+        insideCount++;
+      }
+    }
+    return insideCount / totalPoints > 0.7;
+  }, [tracePoints]);
+
+  const handleMouseDown = useCallback((e) => {
+    if (isEliminated || !gameStarted) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    lastPoint.current = { x, y };
+    setTracePoints([{ x, y }]);
+    setIsTracing(true);
+  }, [isEliminated, gameStarted]);
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isTracing || isEliminated || !gameStarted) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (lastPoint.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.current.x, lastPoint.current.y);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = "#00A86B";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      lastPoint.current = { x, y };
+      setTracePoints(prev => [...prev, { x, y }]);
+    }
+  }, [isTracing, isEliminated, gameStarted]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsTracing(false);
+    lastPoint.current = null;
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    if (selectedShape) {
+      drawShape(ctx, selectedShape);
+    }
+  }, [selectedShape, drawShape]);
+
+  useEffect(() => {
+    if (isEliminated || !gameStarted) return;
+
+    let gameInterval = null;
+    if (timer > 0) {
+      gameInterval = setInterval(() => {
+        setTimer(prev => prev - 1);
+      }, 1000);
+    } else {
+      const survived = checkTraceAccuracy();
+      if (survived) {
+        setMessage("🎉 SUCCESS! You cut the shape.");
+        setCoins(prev => prev + 150);
+        playSound('success');
+        onGameEnd(true);
+      } else {
+        setIsEliminated(true);
+        setMessage("💀 FAILED! Shape broken or time ran out.");
+        playSound('elimination');
+        onGameEnd(false);
+      }
+    }
+
+    return () => {
+      if (gameInterval) clearInterval(gameInterval);
+    };
+  }, [timer, isEliminated, gameStarted, checkTraceAccuracy, onGameEnd, setCoins]);
+
+  const startGame = () => {
+    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+    setSelectedShape(randomShape);
+    setTimer(60);
+    setIsEliminated(false);
+    setMessage("");
+    setGameStarted(true);
+    setTracePoints([]);
+    playSound('success');
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+      {isEliminated && (
+        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+          <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
+        🎭 Player: #{player?.number} {player?.name}
+      </div>
+      <div className="absolute top-4 right-4 mobile-text-sm md:text-lg font-mono text-squidPink animate-slide-in-right">
+        ⏰ Time Left: {timer}s
+      </div>
+
+      <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+        {message || `🍯 Honeycomb: Trace the ${selectedShape || "shape"}`}
+      </h2>
+
+      <div className="relative w-80 h-80 md:w-96 md:h-96 bg-squidGray rounded-lg border-2 border-squidPink/50 shadow-lg shadow-squidPink/20 flex items-center justify-center overflow-hidden animate-bounce-in">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full cursor-crosshair"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent("mousedown", {
+              clientX: touch.clientX,
+              clientY: touch.clientY
+            });
+            handleMouseDown(mouseEvent);
+          }}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent("mousemove", {
+              clientX: touch.clientX,
+              clientY: touch.clientY
+            });
+            handleMouseMove(mouseEvent);
+          }}
+          onTouchEnd={handleMouseUp}
+        />
+      </div>
+
+      <div className="w-80 md:w-96 mt-4">
+        <Progress value={(timer / 60) * 100} className="w-full mb-2" animated={true} />
+        <div className="text-center mobile-text-sm md:text-lg text-squidLightGray font-bold">
+          ⏱️ Time Progress
+        </div>
+      </div>
+
+      {!gameStarted && (
+        <Button
+          onClick={startGame}
+          className="mt-6 md:mt-8 font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="primary"
+        >
+          🎬 Start Honeycomb
+        </Button>
+      )}
+    </div>
+  );
+};
+
+// Tug of War Game Component
+const TugOfWarGame = ({ onGameEnd, player }) => {
+  const [playerStrength, setPlayerStrength] = useState(0);
+  const [opponentStrength, setOpponentStrength] = useState(0);
+  const [timer, setTimer] = useState(20);
+  const [gamePhase, setGamePhase] = useState("waiting");
+  const [message, setMessage] = useState("");
+  const [isEliminated, setIsEliminated] = useState(player?.isEliminated || false);
+  const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+
+  const opponentIntervalRef = useRef(null);
+  const gameTimerIntervalRef = useRef(null);
+
+  useEffect(() => {
+    if (isEliminated) {
+      setMessage("💀 ELIMINATED!");
+      playSound('elimination');
+      onGameEnd(false);
+      return;
+    }
+
+    if (gamePhase === "playing") {
+      gameTimerIntervalRef.current = setInterval(() => {
+        setTimer(prev => {
+          if (prev <= 1) {
+            clearInterval(gameTimerIntervalRef.current);
+            setGamePhase("finished");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      opponentIntervalRef.current = setInterval(() => {
+        setOpponentStrength(prev => Math.min(prev + Math.random() * 3 + 1, 100));
+      }, 800);
+    } else if (gamePhase === "finished") {
+      if (playerStrength >= 100) {
+        setMessage("🎉 VICTORY! You pulled them over!");
+        setCoins(prev => prev + 200);
+        playSound('success');
+        onGameEnd(true);
+      } else {
+        setIsEliminated(true);
+        setMessage("💀 DEFEAT! You were pulled over.");
+        playSound('elimination');
+        onGameEnd(false);
+      }
+      if (opponentIntervalRef.current) clearInterval(opponentIntervalRef.current);
+      if (gameTimerIntervalRef.current) clearInterval(gameTimerIntervalRef.current);
+    }
+
+    return () => {
+      if (opponentIntervalRef.current) clearInterval(opponentIntervalRef.current);
+      if (gameTimerIntervalRef.current) clearInterval(gameTimerIntervalRef.current);
+    };
+  }, [gamePhase, isEliminated, playerStrength, onGameEnd, setCoins]);
+
+  const handlePull = () => {
+    if (gamePhase !== "playing" || isEliminated) return;
+    setPlayerStrength(prev => Math.min(prev + 8, 100));
+    playSound('click');
+  };
+
+  const startGame = () => {
+    setPlayerStrength(0);
+    setOpponentStrength(0);
+    setTimer(20);
+    setIsEliminated(false);
+    setMessage("");
+    setGamePhase("playing");
+    playSound('success');
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+      {isEliminated && (
+        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+          <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
+        🎭 Player: #{player?.number} {player?.name}
+      </div>
+      <div className="absolute top-4 right-4 mobile-text-sm md:text-lg font-mono text-squidPink animate-slide-in-right">
+        ⏰ Time Left: {timer}s
+      </div>
+
+      <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+        {message || "💪 Tug of War: Pull to Survive!"}
+      </h2>
+
+      <div className="w-full max-w-4xl space-y-4 md:space-y-6 mb-6 md:mb-8 animate-bounce-in">
+        <div className="flex items-center justify-between mobile-text-lg md:text-2xl font-bold text-squidGreen">
+          <span>🟢 Your Team</span>
+          <span>{playerStrength.toFixed(0)}%</span>
+        </div>
+        <Progress value={playerStrength} className="w-full mb-2" animated={true} />
+
+        <div className="flex items-center justify-between mobile-text-lg md:text-2xl font-bold text-squidRed">
+          <span>🔴 Opponent Team</span>
+          <span>{opponentStrength.toFixed(0)}%</span>
+        </div>
+        <Progress value={opponentStrength} className="w-full mb-2" animated={true} />
+      </div>
+
+      {gamePhase === "waiting" && (
+        <Button
+          onClick={startGame}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="primary"
+        >
+          🎬 Start Tug of War
+        </Button>
+      )}
+
+      {gamePhase === "playing" && !isEliminated && (
+        <Button
+          onClick={handlePull}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl transition-all duration-300 active:scale-95"
+          variant="secondary"
+        >
+          💪 PULL! (Click Rapidly)
+        </Button>
+      )}
+
+      {gamePhase === "finished" && (
+        <Button
+          onClick={() => onGameEnd(playerStrength >= 100)}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="accent"
+        >
+          ➡️ Continue
+        </Button>
+      )}
+    </div>
+  );
+};
+
+// Marbles Game Component
+const MarblesGame = ({ onGameEnd, player }) => {
+  const [opponentMarbles, setOpponentMarbles] = useState(0);
+  const [playerGuess, setPlayerGuess] = useState(null);
+  const [message, setMessage] = useState("");
+  const [isEliminated, setIsEliminated] = useState(player?.isEliminated || false);
+  const [gamePhase, setGamePhase] = useState("waiting");
+  const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+
+  useEffect(() => {
+    if (isEliminated) {
+      setMessage("💀 ELIMINATED!");
+      playSound('elimination');
+      onGameEnd(false);
+      return;
+    }
+  }, [isEliminated, onGameEnd]);
+
+  const startGame = () => {
+    const randomMarbles = Math.floor(Math.random() * 10) + 1;
+    setOpponentMarbles(randomMarbles);
+    setPlayerGuess(null);
+    setMessage("🤔 Guess if I have an ODD or EVEN number of marbles.");
+    setIsEliminated(false);
+    setGamePhase("guessing");
+    playSound('success');
+  };
+
+  const handleGuess = (guess) => {
+    if (gamePhase !== "guessing") return;
+    setPlayerGuess(guess);
+    setGamePhase("revealing");
+    setMessage("🎲 Revealing...");
+
+    setTimeout(() => {
+      const isOpponentEven = opponentMarbles % 2 === 0;
+      const isCorrect = (guess === "even" && isOpponentEven) || (guess === "odd" && !isOpponentEven);
+
+      if (isCorrect) {
+        setMessage(`🎉 Correct! I had ${opponentMarbles} marbles (${isOpponentEven ? "EVEN" : "ODD"}). You win!`);
+        setCoins(prev => prev + 250);
+        playSound('success');
+        setGamePhase("finished");
+      } else {
+        setMessage(`💀 Incorrect! I had ${opponentMarbles} marbles (${isOpponentEven ? "EVEN" : "ODD"}). You lose.`);
+        setIsEliminated(true);
+        playSound('elimination');
+        setGamePhase("finished");
+      }
+    }, 3000);
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+      {isEliminated && (
+        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+          <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
+        🎭 Player: #{player?.number} {player?.name}
+      </div>
+
+      <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+        {message || "🪨 Marbles: Guess Odd or Even"}
+      </h2>
+
+      <div className="flex flex-col items-center space-y-4 md:space-y-6 animate-bounce-in">
+        {gamePhase === "waiting" && (
+          <Button
+            onClick={startGame}
+            className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl"
+            variant="primary"
+          >
+            🎬 Start Marbles Game
+          </Button>
+        )}
+
+        {gamePhase === "guessing" && (
+          <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4">
+            <Button
+              onClick={() => handleGuess("odd")}
+              className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl"
+              variant="secondary"
+            >
+              🔢 ODD
+            </Button>
+            <Button
+              onClick={() => handleGuess("even")}
+              className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl"
+              variant="accent"
+            >
+              🔢 EVEN
+            </Button>
+          </div>
+        )}
+
+        {gamePhase === "revealing" && (
+          <div className="text-center mobile-text-2xl md:text-4xl font-bold text-squidPink animate-pulse">
+            🎲 Revealing...
+            <div className="mobile-text-4xl md:text-8xl mt-4 animate-bounce">🪨</div>
+          </div>
+        )}
+
+        {gamePhase === "finished" && (
+          <Button
+            onClick={() => onGameEnd(!isEliminated)}
+            className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl"
+            variant="secondary"
+          >
+            ➡️ Continue
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Glass Bridge Game Component
+const GlassBridgeGame = ({ onGameEnd, player }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [bridgeLayout, setBridgeLayout] = useState([]);
+  const [message, setMessage] = useState("");
+  const [isEliminated, setIsEliminated] = useState(player?.isEliminated || false);
+  const [gamePhase, setGamePhase] = useState("waiting");
+  const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+  const [selectedPanel, setSelectedPanel] = useState(null);
+
+  const NUM_STEPS = 5;
+
+  useEffect(() => {
+    if (isEliminated) {
+      setMessage("💀 ELIMINATED!");
+      playSound('elimination');
+      onGameEnd(false);
+      return;
+    }
+    if (gamePhase === "finished" && !isEliminated) {
+      setMessage("🎉 SUCCESS! You crossed the Glass Bridge!");
+      setCoins(prev => prev + 300);
+      playSound('success');
+      onGameEnd(true);
+    }
+  }, [isEliminated, gamePhase, onGameEnd, setCoins]);
+
+  const generateBridge = () => {
+    const layout = [];
+    for (let i = 0; i < NUM_STEPS; i++) {
+      layout.push(Math.random() > 0.5);
+    }
+    setBridgeLayout(layout);
+  };
+
+  const startGame = () => {
+    generateBridge();
+    setCurrentStep(0);
+    setMessage("🤔 Choose your path wisely.");
+    setIsEliminated(false);
+    setSelectedPanel(null);
+    setGamePhase("playing");
+    playSound('success');
+  };
+
+  const handlePanelClick = (panelIndex) => {
+    if (gamePhase !== "playing" || isEliminated || selectedPanel !== null) return;
+
+    setSelectedPanel(panelIndex);
+
+    setTimeout(() => {
+      const isSafe = bridgeLayout[currentStep] === (panelIndex === 0);
+      if (isSafe) {
+        setMessage("✅ Safe! Proceed to the next step.");
+        playSound('success');
+        setCurrentStep(prev => prev + 1);
+        setSelectedPanel(null);
+        if (currentStep + 1 >= NUM_STEPS) {
+          setGamePhase("finished");
+        }
+      } else {
+        setMessage("💥 Shattered! You fell.");
+        setIsEliminated(true);
+        playSound('elimination');
+        setGamePhase("finished");
+      }
+    }, 1500);
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+      {isEliminated && (
+        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+          <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
+        🎭 Player: #{player?.number} {player?.name}
+      </div>
+
+      <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+        {message || "🌉 Glass Bridge: Choose Your Panel"}
+      </h2>
+
+      <div className="flex flex-col items-center space-y-4 md:space-y-6 w-full max-w-2xl animate-bounce-in">
+        <div className="relative w-full h-8 md:h-12 bg-squidGray rounded-full overflow-hidden border-2 border-squidPink/50 shadow-lg shadow-squidPink/20">
+          <div
+            className="absolute h-full bg-squidGreen transition-all duration-500 ease-out"
+            style={{ width: `${(currentStep / NUM_STEPS) * 100}%` }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center text-squidLightGray font-bold mobile-text-sm md:text-lg">
+            Step {currentStep} / {NUM_STEPS}
+          </div>
+        </div>
+
+        {gamePhase === "waiting" && (
+          <Button
+            onClick={startGame}
+            className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl"
+            variant="primary"
+          >
+            🎬 Start Glass Bridge
+          </Button>
+        )}
+
+        {gamePhase === "playing" && !isEliminated && (
+          <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4 mt-6 md:mt-8">
+            <Button
+              onClick={() => handlePanelClick(0)}
+              disabled={selectedPanel !== null}
+              className={`relative w-32 h-32 md:w-40 md:h-40 bg-squidGray hover:bg-squidGray/80 text-white font-bold mobile-text-lg md:text-2xl rounded-lg transition-all duration-300 flex flex-col items-center justify-center border-2 border-squidPink/50 shadow-lg shadow-squidPink/20 ${selectedPanel === 0 ? "scale-105 ring-4 ring-squidPink" : ""}`}
+              variant="ghost"
+            >
+              {selectedPanel === 0 && bridgeLayout[currentStep] === true && (
+                <div className="absolute text-squidGreen mobile-text-4xl md:text-6xl animate-bounce">✅</div>
+              )}
+              {selectedPanel === 0 && bridgeLayout[currentStep] === false && (
+                <div className="absolute text-squidRed mobile-text-4xl md:text-6xl animate-pulse">❌</div>
+              )}
+              ⬅️ Left Panel
+            </Button>
+            <Button
+              onClick={() => handlePanelClick(1)}
+              disabled={selectedPanel !== null}
+              className={`relative w-32 h-32 md:w-40 md:h-40 bg-squidGray hover:bg-squidGray/80 text-white font-bold mobile-text-lg md:text-2xl rounded-lg transition-all duration-300 flex flex-col items-center justify-center border-2 border-squidPink/50 shadow-lg shadow-squidPink/20 ${selectedPanel === 1 ? "scale-105 ring-4 ring-squidPink" : ""}`}
+              variant="ghost"
+            >
+              {selectedPanel === 1 && bridgeLayout[currentStep] === false && (
+                <div className="absolute text-squidGreen mobile-text-4xl md:text-6xl animate-bounce">✅</div>
+              )}
+              {selectedPanel === 1 && bridgeLayout[currentStep] === true && (
+                <div className="absolute text-squidRed mobile-text-4xl md:text-6xl animate-pulse">❌</div>
+              )}
+              Right Panel ➡️
+            </Button>
+          </div>
+        )}
+
+        {gamePhase === "finished" && (
+          <Button
+            onClick={() => onGameEnd(!isEliminated)}
+            className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl"
+            variant="secondary"
+          >
+            ➡️ Continue
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Final Squid Game Component
+const FinalSquidGame = ({ onGameEnd, player }) => {
+  const [playerHealth, setPlayerHealth] = useState(100);
+  const [opponentHealth, setOpponentHealth] = useState(100);
+  const [message, setMessage] = useState("⚔️ The Final Game Begins!");
+  const [isEliminated, setIsEliminated] = useState(player?.isEliminated || false);
+  const [gamePhase, setGamePhase] = useState("waiting");
+  const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+  const [playerAction, setPlayerAction] = useState(null);
+  const [opponentAction, setOpponentAction] = useState(null);
+
+  useEffect(() => {
+    if (playerHealth <= 0 && gamePhase === "playing") {
+      setMessage("💀 You were defeated! ELIMINATED.");
+      setIsEliminated(true);
+      setGamePhase("finished");
+      playSound('elimination');
+    } else if (opponentHealth <= 0 && gamePhase === "playing") {
+      setMessage("🏆 VICTORY! You won the Squid Game!");
+      setCoins(prev => prev + 1000);
+      setGamePhase("finished");
+      playSound('success');
+    }
+  }, [playerHealth, opponentHealth, gamePhase, setCoins]);
+
+  const startGame = () => {
+    setPlayerHealth(100);
+    setOpponentHealth(100);
+    setMessage("⚔️ Choose your move!");
+    setIsEliminated(false);
+    setPlayerAction(null);
+    setOpponentAction(null);
+    setGamePhase("playing");
+    playSound('success');
+  };
+
+  const handlePlayerMove = (action) => {
+    if (gamePhase !== "playing" || isEliminated) return;
+
+    setPlayerAction(action);
+    const randomOpponentAction = Math.random() > 0.5 ? "attack" : "defend";
+    setOpponentAction(randomOpponentAction);
+
+    setTimeout(() => {
+      let newPlayerHealth = playerHealth;
+      let newOpponentHealth = opponentHealth;
+      let roundMessage = "";
+
+      if (action === "attack" && randomOpponentAction === "defend") {
+        roundMessage = "⚔️🛡️ You attacked, opponent defended. No damage.";
+      } else if (action === "defend" && randomOpponentAction === "attack") {
+        roundMessage = "🛡️⚔️ You defended, opponent attacked. No damage.";
+      } else if (action === "attack" && randomOpponentAction === "attack") {
+        const damage = Math.floor(Math.random() * 20) + 15;
+        newOpponentHealth = Math.max(0, opponentHealth - damage);
+        newPlayerHealth = Math.max(0, playerHealth - damage);
+        roundMessage = `⚔️⚔️ Both attacked! You took ${damage} damage, opponent took ${damage} damage.`;
+        playSound('click');
+      } else if (action === "defend" && randomOpponentAction === "defend") {
+        roundMessage = "🛡️🛡️ Both defended. Nothing happened.";
+      }
+
+      setPlayerHealth(newPlayerHealth);
+      setOpponentHealth(newOpponentHealth);
+      setMessage(roundMessage);
+      setPlayerAction(null);
+      setOpponentAction(null);
+    }, 2000);
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+      {isEliminated && (
+        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+          <h2 className="mobile-text-4xl md:text-8xl font-bold text-white drop-shadow-lg font-orbitron text-center">💀 ELIMINATED</h2>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 mobile-text-sm md:text-lg font-mono text-squidGreen animate-slide-in-left">
+        🎭 Player: #{player?.number} {player?.name}
+      </div>
+
+      <h2 className="mobile-text-2xl md:text-6xl font-bold mb-6 md:mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+        {message || "🦑 The Final Squid Game"}
+      </h2>
+
+      <div className="flex flex-col md:flex-row justify-around w-full max-w-4xl mb-6 md:mb-8 space-y-4 md:space-y-0 animate-bounce-in">
+        <div className="flex flex-col items-center">
+          <h3 className="mobile-text-lg md:text-2xl font-bold text-squidGreen mb-2">🟢 Your Health</h3>
+          <Progress value={playerHealth} className="w-40 md:w-48 mb-2" animated={true} />
+          <span className="mobile-text-lg md:text-xl font-bold">{playerHealth}%</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <h3 className="mobile-text-lg md:text-2xl font-bold text-squidRed mb-2">🔴 Opponent Health</h3>
+          <Progress value={opponentHealth} className="w-40 md:w-48 mb-2" animated={true} />
+          <span className="mobile-text-lg md:text-xl font-bold">{opponentHealth}%</span>
+        </div>
+      </div>
+
+      {gamePhase === "waiting" && (
+        <Button
+          onClick={startGame}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="primary"
+        >
+          🎬 Start Final Game
+        </Button>
+      )}
+
+      {gamePhase === "playing" && !isEliminated && (
+        <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-6 mt-6 md:mt-8">
+          <Button
+            onClick={() => handlePlayerMove("attack")}
+            disabled={playerAction !== null}
+            className={`font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 ${playerAction === "attack" ? "scale-105 ring-4 ring-squidGreen" : ""}`}
+            variant="secondary"
+          >
+            <span className="mobile-text-2xl md:text-3xl">⚔️</span>
+            <span>Attack</span>
+          </Button>
+          <Button
+            onClick={() => handlePlayerMove("defend")}
+            disabled={playerAction !== null}
+            className={`font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 ${playerAction === "defend" ? "scale-105 ring-4 ring-squidPink" : ""}`}
+            variant="accent"
+          >
+            <span className="mobile-text-2xl md:text-3xl">🛡️</span>
+            <span>Defend</span>
+          </Button>
+        </div>
+      )}
+
+      {gamePhase === "finished" && (
+        <Button
+          onClick={() => onGameEnd(!isEliminated)}
+          className="font-bold py-4 px-8 md:py-6 md:px-12 mobile-text-lg md:text-2xl rounded-xl animate-bounce-in"
+          variant="secondary"
+        >
+          {isEliminated ? "🏠 Return to Lobby" : "🏆 Claim Your Prize!"}
+        </Button>
+      )}
+    </div>
+  );
+};
 
         // Announcement Banner Component
         const AnnouncementBanner = ({ announcement }) => {
@@ -1407,52 +2242,67 @@
                 }
 
                 switch (currentView) {
-                    case "login":
-                        return <AdminLogin onLoginSuccess={handleAdminLoginSuccess} />;
-                    case "admin":
-                        return (
-                            <AdminDashboard
-                                onLogout={handleAdminLogout}
-                                players={players}
-                                gameId={gameId}
-                                setGameId={setGameId}
-                                currentRound={currentRound}
-                            />
-                        );
-                    case "lobby":
-                        return (
-                            <Lobby
-                                onJoinGame={handleJoinGame}
-                                players={players}
-                                gameId={gameId}
-                                onStartGame={async () => {
-                                    if (gameId) {
-                                        await database.ref(`games/${gameId}`).update({ currentRound: 1, status: "playing" });
-                                    }
-                                }}
-                                isAdmin={isAdminLoggedIn}
-                                currentRound={currentRound}
-                                currentPlayerId={currentPlayerId}
-                            />
-                        );
-                    case "red-light-green-light":
-                        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
-                        return <RedLightGreenLight onGameEnd={handleGameEnd} player={currentPlayer} />;
-                    case "game-over":
-                        return (
-                            <GameOver
-                                message={message}
-                                coins={coins}
-                                onPlayAgain={() => {
-                                    localStorage.removeItem("squid-game-player-id");
-                                    localStorage.removeItem("squid-game-coins");
-                                    window.location.reload();
-                                }}
-                                onBackToLobby={() => setCurrentView("lobby")}
-                            />
-                        );
-                    default:
-                        return null;
+                  case "login":
+                    return <AdminLogin onLoginSuccess={handleAdminLoginSuccess} />;
+                  case "admin":
+                    return (
+                      <AdminDashboard
+                        onLogout={handleAdminLogout}
+                        players={players}
+                        gameId={gameId}
+                        setGameId={setGameId}
+                        currentRound={currentRound}
+                      />
+                    );
+                  case "lobby":
+                    return (
+                      <Lobby
+                        onJoinGame={handleJoinGame}
+                        players={players}
+                        gameId={gameId}
+                        onStartGame={async () => {
+                          if (gameId) {
+                            await database.ref(`games/${gameId}`).update({ currentRound: 1, status: "playing" });
+                          }
+                        }}
+                        isAdmin={isAdminLoggedIn}
+                        currentRound={currentRound}
+                        currentPlayerId={currentPlayerId}
+                      />
+                    );
+                  case "red-light-green-light":
+                    if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                    return <RedLightGreenLightGame onGameEnd={handleGameEnd} player={currentPlayer} />;
+                  case "honeycomb":
+                    if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                    return <HoneycombGame onGameEnd={handleGameEnd} player={currentPlayer} />;
+                  case "tug-of-war":
+                    if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                    return <TugOfWarGame onGameEnd={handleGameEnd} player={currentPlayer} />;
+                  case "marbles":
+                    if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                    return <MarblesGame onGameEnd={handleGameEnd} player={currentPlayer} />;
+                  case "glass-bridge":
+                    if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                    return <GlassBridgeGame onGameEnd={handleGameEnd} player={currentPlayer} />;
+                  case "squid-game":
+                    if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                    return <FinalSquidGame onGameEnd={handleGameEnd} player={currentPlayer} />;
+                  case "game-over":
+                    return (
+                      <GameOver
+                        message={message}
+                        coins={coins}
+                        onPlayAgain={() => {
+                          localStorage.removeItem("squid-game-player-id");
+                          localStorage.removeItem("squid-game-coins");
+                          window.location.reload();
+                        }}
+                        onBackToLobby={() => setCurrentView("lobby")}
+                      />
+                    );
+                  default:
+                    return null;
                 }
             };
 
