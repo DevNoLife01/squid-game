@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { cn } from "@/lib/utils"
-import { X, Check } from "lucide-react"
 
 interface Player {
   id: string
@@ -52,9 +51,45 @@ export function GlassBridge({ onGameEnd, player }: GlassBridgeProps) {
   const generateBridge = () => {
     const layout: boolean[] = []
     for (let i = 0; i < NUM_STEPS; i++) {
-      layout.push(Math.random() > 0.5) // Randomly assign safe (true) or shatter (false)
+      layout.push(Math.random() > 0.5) // true = left panel safe, false = right panel safe
     }
     setBridgeLayout(layout)
+    console.log("Bridge layout:", layout) // For debugging
+  }
+
+  const handlePanelClick = (panelIndex: number) => {
+    if (gamePhase !== "playing" || isEliminated || selectedPanel !== null) return
+
+    setSelectedPanel(panelIndex)
+    setMessage("🔍 Testing the glass...")
+
+    setTimeout(() => {
+      // panelIndex: 0 = left, 1 = right
+      // bridgeLayout[currentStep]: true = left safe, false = right safe
+      const isSafe = (panelIndex === 0 && bridgeLayout[currentStep]) || (panelIndex === 1 && !bridgeLayout[currentStep])
+
+      if (isSafe) {
+        setMessage("✅ Safe! The glass holds. Proceed to the next step.")
+        setCurrentStep((prev) => prev + 1)
+        setSelectedPanel(null)
+
+        if (currentStep + 1 >= NUM_STEPS) {
+          setMessage("🎉 SUCCESS! You crossed the Glass Bridge!")
+          setCoins((prev) => prev + 300)
+          setGamePhase("finished")
+          setTimeout(() => onGameEnd(true), 1500)
+        } else {
+          setTimeout(() => {
+            setMessage("🤔 Choose your next panel wisely...")
+          }, 1500)
+        }
+      } else {
+        setMessage("💥 CRASH! The glass shattered! You fell.")
+        setIsEliminated(true)
+        setGamePhase("finished")
+        setTimeout(() => onGameEnd(false), 1500)
+      }
+    }, 2000) // 2 second suspense
   }
 
   const startGame = () => {
@@ -64,30 +99,6 @@ export function GlassBridge({ onGameEnd, player }: GlassBridgeProps) {
     setIsEliminated(false)
     setSelectedPanel(null)
     setGamePhase("playing")
-  }
-
-  const handlePanelClick = (panelIndex: number) => {
-    if (gamePhase !== "playing" || isEliminated || selectedPanel !== null) return
-
-    setSelectedPanel(panelIndex)
-
-    setTimeout(() => {
-      const isSafe = bridgeLayout[currentStep] === (panelIndex === 0) // Left panel is safe if bridgeLayout[step] is true, right if false
-      if (isSafe) {
-        setMessage("Safe! Proceed to the next step.")
-        playSound("/glass-safe.mp3")
-        setCurrentStep((prev) => prev + 1)
-        setSelectedPanel(null)
-        if (currentStep + 1 >= NUM_STEPS) {
-          setGamePhase("finished")
-        }
-      } else {
-        setMessage("Shattered! You fell.")
-        setIsEliminated(true)
-        playSound("/glass-shatter.mp3")
-        setGamePhase("finished")
-      }
-    }, 1000) // Simulate a brief delay for the outcome
   }
 
   return (
@@ -127,41 +138,61 @@ export function GlassBridge({ onGameEnd, player }: GlassBridgeProps) {
         )}
 
         {gamePhase === "playing" && !isEliminated && (
-          <div className="flex space-x-4 mt-8">
-            <Button
-              onClick={() => handlePanelClick(0)}
-              disabled={selectedPanel !== null}
-              className={cn(
-                "relative w-40 h-40 bg-squidGray hover:bg-squidGray/80 text-white font-bold text-2xl rounded-lg transition-all duration-300 flex flex-col items-center justify-center",
-                "border-2 border-squidPink/50 shadow-lg shadow-squidPink/20",
-                selectedPanel === 0 && "scale-105 ring-4 ring-squidPink",
-              )}
-            >
-              {selectedPanel === 0 && bridgeLayout[currentStep] === true && (
-                <Check className="absolute text-squidGreen w-16 h-16 animate-bounce" />
-              )}
-              {selectedPanel === 0 && bridgeLayout[currentStep] === false && (
-                <X className="absolute text-squidRed w-16 h-16 animate-pulse" />
-              )}
-              Left Panel
-            </Button>
-            <Button
-              onClick={() => handlePanelClick(1)}
-              disabled={selectedPanel !== null}
-              className={cn(
-                "relative w-40 h-40 bg-squidGray hover:bg-squidGray/80 text-white font-bold text-2xl rounded-lg transition-all duration-300 flex flex-col items-center justify-center",
-                "border-2 border-squidPink/50 shadow-lg shadow-squidPink/20",
-                selectedPanel === 1 && "scale-105 ring-4 ring-squidPink",
-              )}
-            >
-              {selectedPanel === 1 && bridgeLayout[currentStep] === false && (
-                <Check className="absolute text-squidGreen w-16 h-16 animate-bounce" />
-              )}
-              {selectedPanel === 1 && bridgeLayout[currentStep] === true && (
-                <X className="absolute text-squidRed w-16 h-16 animate-pulse" />
-              )}
-              Right Panel
-            </Button>
+          <div className="space-y-6">
+            <div className="text-center text-2xl font-bold text-squidPink">
+              🌉 Step {currentStep + 1} of {NUM_STEPS}
+            </div>
+            <div className="flex space-x-6 justify-center">
+              <Button
+                onClick={() => handlePanelClick(0)}
+                disabled={selectedPanel !== null}
+                className={cn(
+                  "relative w-32 h-32 md:w-40 md:h-40 text-xl font-bold rounded-xl transition-all duration-300 flex flex-col items-center justify-center",
+                  "border-4 border-squidPink/50 shadow-xl",
+                  selectedPanel === 0 && "scale-110 ring-4 ring-squidPink animate-pulse",
+                  selectedPanel === 0 && bridgeLayout[currentStep] && "bg-squidGreen/20 border-squidGreen",
+                  selectedPanel === 0 && !bridgeLayout[currentStep] && "bg-squidRed/20 border-squidRed",
+                )}
+                variant="ghost"
+              >
+                <div className="text-4xl mb-2">⬅️</div>
+                <div>Left Panel</div>
+                {selectedPanel === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {bridgeLayout[currentStep] ? (
+                      <div className="text-6xl animate-bounce">✅</div>
+                    ) : (
+                      <div className="text-6xl animate-pulse">💥</div>
+                    )}
+                  </div>
+                )}
+              </Button>
+
+              <Button
+                onClick={() => handlePanelClick(1)}
+                disabled={selectedPanel !== null}
+                className={cn(
+                  "relative w-32 h-32 md:w-40 md:h-40 text-xl font-bold rounded-xl transition-all duration-300 flex flex-col items-center justify-center",
+                  "border-4 border-squidPink/50 shadow-xl",
+                  selectedPanel === 1 && "scale-110 ring-4 ring-squidPink animate-pulse",
+                  selectedPanel === 1 && !bridgeLayout[currentStep] && "bg-squidGreen/20 border-squidGreen",
+                  selectedPanel === 1 && bridgeLayout[currentStep] && "bg-squidRed/20 border-squidRed",
+                )}
+                variant="ghost"
+              >
+                <div className="text-4xl mb-2">➡️</div>
+                <div>Right Panel</div>
+                {selectedPanel === 1 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {!bridgeLayout[currentStep] ? (
+                      <div className="text-6xl animate-bounce">✅</div>
+                    ) : (
+                      <div className="text-6xl animate-pulse">💥</div>
+                    )}
+                  </div>
+                )}
+              </Button>
+            </div>
           </div>
         )}
 

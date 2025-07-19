@@ -30,44 +30,56 @@ export function Marbles({ onGameEnd, player }: MarblesProps) {
     audio.play().catch((e) => console.log("Audio play failed:", e))
   }
 
+  const [revealPhase, setRevealPhase] = useState(false)
+  const [showResult, setShowResult] = useState(false)
+
   useEffect(() => {
     if (isEliminated) {
-      setMessage("ELIMINATED!")
+      setMessage("💀 ELIMINATED!")
       onGameEnd(false)
       return
     }
-  }, [isEliminated, onGameEnd])
+
+    if (showResult) {
+      setTimeout(() => {
+        setGamePhase("finished")
+      }, 2000)
+    }
+  }, [isEliminated, onGameEnd, showResult])
 
   const startGame = () => {
-    const randomMarbles = Math.floor(Math.random() * 10) + 1 // 1 to 10 marbles
+    const randomMarbles = Math.floor(Math.random() * 20) + 1 // 1 to 20 marbles for more challenge
     setOpponentMarbles(randomMarbles)
     setPlayerGuess(null)
-    setMessage("Guess if I have an ODD or EVEN number of marbles.")
+    setMessage("🤔 Guess if I have an ODD or EVEN number of marbles.")
     setIsEliminated(false)
     setGamePhase("guessing")
+    setRevealPhase(false)
+    setShowResult(false)
   }
 
   const handleGuess = (guess: "odd" | "even") => {
     if (gamePhase !== "guessing") return
     setPlayerGuess(guess)
     setGamePhase("revealing")
+    setRevealPhase(true)
+    setMessage("🎲 Revealing the marbles...")
 
     setTimeout(() => {
       const isOpponentEven = opponentMarbles % 2 === 0
       const isCorrect = (guess === "even" && isOpponentEven) || (guess === "odd" && !isOpponentEven)
 
       if (isCorrect) {
-        setMessage(`Correct! I had ${opponentMarbles} marbles (${isOpponentEven ? "EVEN" : "ODD"}). You win!`)
+        setMessage(`🎉 Correct! I had ${opponentMarbles} marbles (${isOpponentEven ? "EVEN" : "ODD"}). You win!`)
         setCoins((prev) => prev + 250)
-        playSound("/win-sound.mp3")
-        setGamePhase("finished")
+        setShowResult(true)
       } else {
-        setMessage(`Incorrect! I had ${opponentMarbles} marbles (${isOpponentEven ? "EVEN" : "ODD"}). You lose.`)
+        setMessage(`💀 Incorrect! I had ${opponentMarbles} marbles (${isOpponentEven ? "EVEN" : "ODD"}). You lose.`)
         setIsEliminated(true)
-        playSound("/elimination-sound.mp3")
-        setGamePhase("finished")
+        setShowResult(true)
       }
-    }, 2000) // Reveal after 2 seconds
+      setRevealPhase(false)
+    }, 3000) // Longer reveal time for suspense
   }
 
   return (
@@ -114,9 +126,15 @@ export function Marbles({ onGameEnd, player }: MarblesProps) {
         )}
 
         {gamePhase === "revealing" && (
-          <div className="text-center text-3xl font-bold text-squidPink animate-pulse">
-            Revealing...
-            <div className="text-6xl mt-4">🪨</div>
+          <div className="text-center animate-bounce-in">
+            <div className="text-3xl font-bold text-squidPink animate-pulse mb-4">🎲 Revealing...</div>
+            <div className="text-6xl mb-4">
+              {Array.from({ length: Math.min(opponentMarbles, 10) }, (_, i) => "🪨").join("")}
+              {opponentMarbles > 10 && "..."}
+            </div>
+            {revealPhase && (
+              <div className="text-2xl text-squidGold animate-fade-in">💎 {opponentMarbles} marbles total!</div>
+            )}
           </div>
         )}
 

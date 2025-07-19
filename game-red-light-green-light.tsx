@@ -75,18 +75,14 @@ export function RedLightGreenLight({ onGameEnd, player }: RedLightGreenLightProp
     if (gamePhase === "waiting" || isEliminated) return
 
     let phaseInterval: NodeJS.Timeout | null = null
+
     const startPhase = () => {
-      const isGreen = Math.random() > 0.5 // Randomly choose green or red
-      const phaseDuration = Math.floor(Math.random() * 3) + 2 // 2-4 seconds
+      const isGreen = Math.random() > 0.4 // 60% chance for green light
+      const phaseDuration = Math.floor(Math.random() * 4) + 2 // 2-5 seconds
 
       setGamePhase(isGreen ? "green" : "red")
       setRoundTimer(phaseDuration)
-      setMessage(isGreen ? "GREEN LIGHT!" : "RED LIGHT!")
-
-      if (dollRef.current) {
-        dollRef.current.style.animationPlayState = isGreen ? "running" : "paused"
-        dollRef.current.style.transform = isGreen ? "rotateY(0deg)" : "rotateY(180deg)"
-      }
+      setMessage(isGreen ? "🟢 GREEN LIGHT! MOVE!" : "🔴 RED LIGHT! STOP!")
 
       let currentPhaseTime = phaseDuration
       phaseInterval = setInterval(() => {
@@ -95,8 +91,10 @@ export function RedLightGreenLight({ onGameEnd, player }: RedLightGreenLightProp
 
         if (currentPhaseTime <= 0) {
           clearInterval(phaseInterval!)
+          // Check for elimination before switching phases
           if (gamePhase === "red" && isMoving) {
             setIsEliminated(true)
+            return
           }
           startPhase() // Start next phase
         }
@@ -108,16 +106,32 @@ export function RedLightGreenLight({ onGameEnd, player }: RedLightGreenLightProp
     return () => {
       if (phaseInterval) clearInterval(phaseInterval)
     }
-  }, [gamePhase, isEliminated]) // Only re-run when gamePhase changes from waiting or elimination status changes
+  }, [gamePhase === "waiting", isEliminated]) // Only depend on waiting state and elimination
+
+  // Separate effect for movement progress
+  useEffect(() => {
+    if (isMoving && gamePhase === "green" && progress < 100 && !isEliminated) {
+      const moveInterval = setInterval(() => {
+        setProgress((prev) => {
+          const newProgress = Math.min(prev + 2, 100)
+          if (newProgress >= 100) {
+            setGamePhase("finished")
+          }
+          return newProgress
+        })
+      }, 100) // Update every 100ms for smooth progress
+      return () => clearInterval(moveInterval)
+    }
+  }, [isMoving, gamePhase, progress, isEliminated])
 
   const handleMoveStart = () => {
     if (isEliminated || gamePhase === "waiting" || gamePhase === "finished") return
     setIsMoving(true)
     if (gamePhase === "red") {
-      // Give a small grace period, then eliminate
-      eliminationTimeoutRef.current = setTimeout(() => {
+      // Immediate elimination for moving during red light
+      setTimeout(() => {
         setIsEliminated(true)
-      }, 100) // Small delay to allow for quick release
+      }, 200) // Small delay to show the action
     }
   }
 

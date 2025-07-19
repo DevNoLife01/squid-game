@@ -38,11 +38,16 @@ export function Honeycomb({ onGameEnd, player }: HoneycombProps) {
   const drawShape = useCallback((ctx: CanvasRenderingContext2D, shape: string) => {
     const centerX = ctx.canvas.width / 2
     const centerY = ctx.canvas.height / 2
-    const size = 80
+    const size = 60
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-    ctx.strokeStyle = "#FF007F" // Neon pink for the shape outline
-    ctx.lineWidth = 4
+
+    // Draw background
+    ctx.fillStyle = "#1A1A1A"
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+
+    ctx.strokeStyle = "#FF007F"
+    ctx.lineWidth = 3
     ctx.lineJoin = "round"
     ctx.lineCap = "round"
 
@@ -64,7 +69,7 @@ export function Honeycomb({ onGameEnd, player }: HoneycombProps) {
         const numPoints = 5
         for (let i = 0; i < numPoints * 2; i++) {
           const radius = i % 2 === 0 ? outerRadius : innerRadius
-          const angle = (Math.PI / numPoints) * i - Math.PI / 2 // Start at top
+          const angle = (Math.PI / numPoints) * i - Math.PI / 2
           const x = centerX + radius * Math.cos(angle)
           const y = centerY + radius * Math.sin(angle)
           if (i === 0) {
@@ -76,48 +81,64 @@ export function Honeycomb({ onGameEnd, player }: HoneycombProps) {
         path.closePath()
         break
       case "umbrella":
-        path.arc(centerX, centerY + size / 4, size, Math.PI, Math.PI * 2) // Top arc
-        path.moveTo(centerX - size, centerY + size / 4)
-        path.lineTo(centerX - size / 4, centerY + size * 1.5) // Left handle
-        path.arc(centerX, centerY + size * 1.5, size / 4, Math.PI, Math.PI * 2) // Handle curve
-        path.lineTo(centerX + size / 4, centerY + size * 1.5) // Right handle
-        path.lineTo(centerX + size, centerY + size / 4)
+        // Top arc
+        path.arc(centerX, centerY - size / 4, size, 0, Math.PI)
+        // Handle
+        path.moveTo(centerX, centerY - size / 4)
+        path.lineTo(centerX, centerY + size)
+        // Handle curve
+        path.arc(centerX + size / 4, centerY + size, size / 4, Math.PI, 0)
         break
     }
+
     ctx.stroke(path)
-    shapePath.current = path // Store the path for hit testing
+    shapePath.current = path
   }, [])
 
   const checkTraceAccuracy = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas || !shapePath.current) return false
+    if (!canvas || !shapePath.current || tracePoints.current.length < 10) return false
 
     const ctx = canvas.getContext("2d")
     if (!ctx) return false
 
-    // Simple check: ensure most traced points are within the shape
-    let insideCount = 0
+    // Check if most traced points are near the shape outline
+    let nearShapeCount = 0
     const totalPoints = tracePoints.current.length
-    if (totalPoints === 0) return false
+    const tolerance = 15 // pixels
 
     for (const point of tracePoints.current) {
+      // Check if point is near the shape outline
       if (ctx.isPointInStroke(shapePath.current, point.x, point.y)) {
-        insideCount++
+        nearShapeCount++
+      } else {
+        // Check nearby points for tolerance
+        for (let dx = -tolerance; dx <= tolerance; dx += 5) {
+          for (let dy = -tolerance; dy <= tolerance; dy += 5) {
+            if (ctx.isPointInStroke(shapePath.current, point.x + dx, point.y + dy)) {
+              nearShapeCount++
+              break
+            }
+          }
+        }
       }
     }
-    // Require at least 80% of points to be on the path
-    return insideCount / totalPoints > 0.8
+
+    // Require at least 60% of points to be near the shape
+    return nearShapeCount / totalPoints > 0.6
   }, [])
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | React.TouchEvent) => {
       if (isEliminated || !gameStarted) return
       const canvas = canvasRef.current
       if (!canvas) return
 
       const rect = canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
+      const x = (clientX - rect.left) * (canvas.width / rect.width)
+      const y = (clientY - rect.top) * (canvas.height / rect.height)
 
       lastPoint.current = { x, y }
       tracePoints.current = [{ x, y }]
@@ -127,7 +148,7 @@ export function Honeycomb({ onGameEnd, player }: HoneycombProps) {
   )
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | React.TouchEvent) => {
       if (!isTracing || isEliminated || !gameStarted) return
       const canvas = canvasRef.current
       if (!canvas) return
@@ -136,15 +157,17 @@ export function Honeycomb({ onGameEnd, player }: HoneycombProps) {
       if (!ctx) return
 
       const rect = canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
+      const x = (clientX - rect.left) * (canvas.width / rect.width)
+      const y = (clientY - rect.top) * (canvas.height / rect.height)
 
       if (lastPoint.current) {
         ctx.beginPath()
         ctx.moveTo(lastPoint.current.x, lastPoint.current.y)
         ctx.lineTo(x, y)
-        ctx.strokeStyle = "#00A86B" // Green for traced line
-        ctx.lineWidth = 6
+        ctx.strokeStyle = "#00A86B"
+        ctx.lineWidth = 4
         ctx.stroke()
         lastPoint.current = { x, y }
         tracePoints.current.push({ x, y })

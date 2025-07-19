@@ -28,6 +28,9 @@ export function SquidGame({ onGameEnd, player }: SquidGameProps) {
   const [coins, setCoins] = useLocalStorage<number>("squid-game-coins", 0)
   const [playerAction, setPlayerAction] = useState<"attack" | "defend" | null>(null)
   const [opponentAction, setOpponentAction] = useState<"attack" | "defend" | null>(null)
+  const [isPlayerTurn, setIsPlayerTurn] = useState(true)
+  const [combatLog, setCombatLog] = useState<string[]>([])
+  const [actionLocked, setActionLocked] = useState(false)
 
   const playSound = (src: string) => {
     const audio = new Audio(src)
@@ -37,60 +40,87 @@ export function SquidGame({ onGameEnd, player }: SquidGameProps) {
 
   useEffect(() => {
     if (playerHealth <= 0 && gamePhase === "playing") {
-      setMessage("You were defeated! ELIMINATED.")
+      setMessage("💀 You were defeated! ELIMINATED.")
       setIsEliminated(true)
       setGamePhase("finished")
-      playSound("/elimination-sound.mp3")
+      setTimeout(() => onGameEnd(false), 2000)
     } else if (opponentHealth <= 0 && gamePhase === "playing") {
-      setMessage("VICTORY! You won the Squid Game!")
-      setCoins((prev) => prev + 1000) // Grand prize!
+      setMessage("🏆 VICTORY! You won the Squid Game!")
+      setCoins((prev) => prev + 1000)
       setGamePhase("finished")
-      playSound("/win-sound.mp3")
+      setTimeout(() => onGameEnd(true), 2000)
     }
-  }, [playerHealth, opponentHealth, gamePhase, setCoins])
-
-  const startGame = () => {
-    setPlayerHealth(100)
-    setOpponentHealth(100)
-    setMessage("Choose your move!")
-    setIsEliminated(false)
-    setPlayerAction(null)
-    setOpponentAction(null)
-    setGamePhase("playing")
-  }
+  }, [playerHealth, opponentHealth, gamePhase, setCoins, onGameEnd])
 
   const handlePlayerMove = (action: "attack" | "defend") => {
-    if (gamePhase !== "playing" || isEliminated) return
+    if (gamePhase !== "playing" || isEliminated || actionLocked || !isPlayerTurn) return
 
+    setActionLocked(true)
     setPlayerAction(action)
-    const randomOpponentAction = Math.random() > 0.5 ? "attack" : "defend"
+    setIsPlayerTurn(false)
+
+    // Generate opponent action with some strategy
+    const opponentActions = ["attack", "defend"]
+    const opponentWeights = playerHealth < 30 ? [0.8, 0.2] : [0.6, 0.4] // More aggressive when player is weak
+    const randomOpponentAction = Math.random() < opponentWeights[0] ? "attack" : "defend"
     setOpponentAction(randomOpponentAction)
 
     setTimeout(() => {
       let newPlayerHealth = playerHealth
       let newOpponentHealth = opponentHealth
       let roundMessage = ""
+      let logEntry = ""
 
       if (action === "attack" && randomOpponentAction === "defend") {
-        roundMessage = "You attacked, opponent defended. No damage."
-      } else if (action === "defend" && randomOpponentAction === "attack") {
-        roundMessage = "You defended, opponent attacked. No damage."
-      } else if (action === "attack" && randomOpponentAction === "attack") {
-        const damage = Math.floor(Math.random() * 20) + 10 // 10-30 damage
+        const damage = Math.floor(Math.random() * 15) + 10 // 10-25 damage
         newOpponentHealth = Math.max(0, opponentHealth - damage)
-        newPlayerHealth = Math.max(0, playerHealth - damage) // Both take damage
-        roundMessage = `Both attacked! You took ${damage} damage, opponent took ${damage} damage.`
-        playSound("/hit-sound.mp3")
+        roundMessage = `⚔️ Your attack hits! Opponent takes ${damage} damage.`
+        logEntry = `You attacked, opponent defended. Opponent -${damage} HP`
+      } else if (action === "defend" && randomOpponentAction === "attack") {
+        const damage = Math.floor(Math.random() * 8) + 3 // 3-10 reduced damage
+        newPlayerHealth = Math.max(0, playerHealth - damage)
+        roundMessage = `🛡️ You defended! Reduced damage: ${damage}.`
+        logEntry = `You defended, opponent attacked. You -${damage} HP (reduced)`
+      } else if (action === "attack" && randomOpponentAction === "attack") {
+        const playerDamage = Math.floor(Math.random() * 20) + 15 // 15-35 damage
+        const opponentDamage = Math.floor(Math.random() * 20) + 15
+        newOpponentHealth = Math.max(0, opponentHealth - playerDamage)
+        newPlayerHealth = Math.max(0, playerHealth - opponentDamage)
+        roundMessage = `💥 Both attacked! You deal ${playerDamage}, take ${opponentDamage} damage.`
+        logEntry = `Both attacked. You -${opponentDamage} HP, Opponent -${playerDamage} HP`
       } else if (action === "defend" && randomOpponentAction === "defend") {
-        roundMessage = "Both defended. Nothing happened."
+        roundMessage = "🤝 Both defended. Stalemate - no damage dealt."
+        logEntry = "Both defended. No damage."
       }
 
       setPlayerHealth(newPlayerHealth)
       setOpponentHealth(newOpponentHealth)
       setMessage(roundMessage)
-      setPlayerAction(null)
-      setOpponentAction(null)
-    }, 1500) // Simulate combat delay
+      setCombatLog((prev) => [...prev.slice(-4), logEntry]) // Keep last 5 entries
+
+      setTimeout(() => {
+        setPlayerAction(null)
+        setOpponentAction(null)
+        setActionLocked(false)
+        setIsPlayerTurn(true)
+        if (newPlayerHealth > 0 && newOpponentHealth > 0) {
+          setMessage("🎯 Choose your next move!")
+        }
+      }, 2000)
+    }, 1500)
+  }
+
+  const startGame = () => {
+    setPlayerHealth(100)
+    setOpponentHealth(100)
+    setMessage("⚔️ Choose your move!")
+    setIsEliminated(false)
+    setPlayerAction(null)
+    setOpponentAction(null)
+    setGamePhase("playing")
+    setIsPlayerTurn(true)
+    setActionLocked(false)
+    setCombatLog([])
   }
 
   return (
@@ -122,6 +152,23 @@ export function SquidGame({ onGameEnd, player }: SquidGameProps) {
         </div>
       </div>
 
+      {gamePhase === "playing" && (
+        <div className="w-full max-w-2xl mb-6">
+          <h3 className="text-xl font-bold text-squidPink mb-2 text-center">📜 Combat Log</h3>
+          <div className="bg-squidGray/50 rounded-lg p-4 h-32 overflow-y-auto border border-squidPink/30">
+            {combatLog.length === 0 ? (
+              <p className="text-squidLightGray/70 text-center">Combat log will appear here...</p>
+            ) : (
+              combatLog.map((entry, index) => (
+                <p key={index} className="text-sm text-squidLightGray mb-1">
+                  Round {index + 1}: {entry}
+                </p>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {gamePhase === "waiting" && (
         <Button
           onClick={startGame}
@@ -135,7 +182,7 @@ export function SquidGame({ onGameEnd, player }: SquidGameProps) {
         <div className="flex space-x-8 mt-8">
           <Button
             onClick={() => handlePlayerMove("attack")}
-            disabled={playerAction !== null}
+            disabled={playerAction !== null || !isPlayerTurn}
             className={cn(
               "bg-squidGreen hover:bg-squidGreen/80 text-white font-bold py-4 px-8 text-xl rounded-lg transition-colors duration-300 flex items-center space-x-2",
               playerAction === "attack" && "scale-105 ring-4 ring-squidGreen",
@@ -146,7 +193,7 @@ export function SquidGame({ onGameEnd, player }: SquidGameProps) {
           </Button>
           <Button
             onClick={() => handlePlayerMove("defend")}
-            disabled={playerAction !== null}
+            disabled={playerAction !== null || !isPlayerTurn}
             className={cn(
               "bg-squidPink hover:bg-squidPink/80 text-white font-bold py-4 px-8 text-xl rounded-lg transition-colors duration-300 flex items-center space-x-2",
               playerAction === "defend" && "scale-105 ring-4 ring-squidPink",

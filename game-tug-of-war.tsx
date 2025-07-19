@@ -39,16 +39,27 @@ export function TugOfWar({ onGameEnd, player }: TugOfWarProps) {
 
   useEffect(() => {
     if (isEliminated) {
-      setMessage("ELIMINATED!")
+      setMessage("💀 ELIMINATED!")
       onGameEnd(false)
       return
     }
 
     if (gamePhase === "playing") {
+      // Game timer
       gameTimerIntervalRef.current = setInterval(() => {
         setTimer((prev) => {
           if (prev <= 1) {
             clearInterval(gameTimerIntervalRef.current!)
+            // Check who won based on strength
+            if (playerStrength > opponentStrength) {
+              setMessage("🎉 VICTORY! You pulled them over!")
+              setCoins((prev) => prev + 200)
+              onGameEnd(true)
+            } else {
+              setMessage("💀 DEFEAT! You were pulled over.")
+              setIsEliminated(true)
+              onGameEnd(false)
+            }
             setGamePhase("finished")
             return 0
           }
@@ -56,36 +67,52 @@ export function TugOfWar({ onGameEnd, player }: TugOfWarProps) {
         })
       }, 1000)
 
+      // Opponent AI - gets stronger over time but player can overcome with rapid clicking
       opponentIntervalRef.current = setInterval(() => {
-        setOpponentStrength((prev) => Math.min(prev + Math.random() * 5 + 2, 100)) // Opponent gains strength
-      }, 500) // Opponent pulls every 0.5 seconds
-    } else if (gamePhase === "finished") {
-      if (playerStrength >= 100) {
-        setMessage("VICTORY! You pulled them over!")
-        setCoins((prev) => prev + 200)
-        onGameEnd(true)
-        playSound("/win-sound.mp3")
-      } else {
-        setIsEliminated(true)
-        setMessage("DEFEAT! You were pulled over.")
-        onGameEnd(false)
-        playSound("/elimination-sound.mp3")
-      }
-      if (opponentIntervalRef.current) clearInterval(opponentIntervalRef.current)
-      if (gameTimerIntervalRef.current) clearInterval(gameTimerIntervalRef.current)
+        setOpponentStrength((prev) => {
+          const increase = Math.random() * 3 + 1 // 1-4 strength per interval
+          const newStrength = Math.min(prev + increase, 100)
+
+          // Check for immediate win conditions
+          if (newStrength >= 100 && playerStrength < 100) {
+            setTimeout(() => {
+              setMessage("💀 DEFEAT! You were pulled over.")
+              setIsEliminated(true)
+              setGamePhase("finished")
+            }, 100)
+          }
+
+          return newStrength
+        })
+      }, 800) // Opponent pulls every 0.8 seconds
     }
 
     return () => {
       if (opponentIntervalRef.current) clearInterval(opponentIntervalRef.current)
       if (gameTimerIntervalRef.current) clearInterval(gameTimerIntervalRef.current)
     }
-  }, [gamePhase, isEliminated, playerStrength, onGameEnd, setCoins])
+  }, [gamePhase, isEliminated, onGameEnd, setCoins, playerStrength])
+
+  // Separate effect to check for player victory
+  useEffect(() => {
+    if (playerStrength >= 100 && gamePhase === "playing") {
+      setMessage("🎉 VICTORY! You pulled them over!")
+      setCoins((prev) => prev + 200)
+      setGamePhase("finished")
+      setTimeout(() => onGameEnd(true), 1000)
+    }
+  }, [playerStrength, gamePhase, onGameEnd, setCoins])
 
   const handlePull = () => {
     if (gamePhase !== "playing" || isEliminated) return
-    clickCount.current += 1
-    setPlayerStrength((prev) => Math.min(prev + 5, 100)) // Each click adds 5 strength
-    playSound("/pull-sound.mp3")
+
+    setPlayerStrength((prev) => {
+      const increase = Math.random() * 8 + 4 // 4-12 strength per click
+      return Math.min(prev + increase, 100)
+    })
+
+    // Reduce opponent strength slightly when player pulls hard
+    setOpponentStrength((prev) => Math.max(prev - 1, 0))
   }
 
   const startGame = () => {
