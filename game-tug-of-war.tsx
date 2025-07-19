@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useLocalStorage } from "@/hooks/use-local-storage"
-import { cn } from "@/lib/utils"
+import { database, ref, onValue, update } from "@/lib/firebase"
 
 interface Player {
   id: string
@@ -16,113 +16,95 @@ interface Player {
 interface TugOfWarProps {
   onGameEnd: (survived: boolean) => void
   player: Player
+  gameId: string
 }
 
-export function TugOfWar({ onGameEnd, player }: TugOfWarProps) {
-  const [playerStrength, setPlayerStrength] = useState(0)
-  const [opponentStrength, setOpponentStrength] = useState(0)
-  const [timer, setTimer] = useState(20) // 20 seconds for the round
+export function TugOfWar({ onGameEnd, player, gameId }: TugOfWarProps) {
+  const [team1Strength, setTeam1Strength] = useState(0)
+  const [team2Strength, setTeam2Strength] = useState(0)
+  const [timer, setTimer] = useState(30)
   const [gamePhase, setGamePhase] = useState<"waiting" | "playing" | "finished">("waiting")
   const [message, setMessage] = useState("")
   const [isEliminated, setIsEliminated] = useState(player.isEliminated)
   const [coins, setCoins] = useLocalStorage<number>("squid-game-coins", 0)
-
-  const clickCount = useRef(0)
-  const opponentIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const gameTimerIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  const playSound = (src: string) => {
-    const audio = new Audio(src)
-    audio.volume = 0.5
-    audio.play().catch((e) => console.log("Audio play failed:", e))
-  }
+  const [playerTeam, setPlayerTeam] = useState<1 | 2 | null>(null)
+  const [teams, setTeams] = useState<{ team1: Player[]; team2: Player[] }>({ team1: [], team2: [] })
 
   useEffect(() => {
-    if (isEliminated) {
-      setMessage("💀 ELIMINATED!")
-      onGameEnd(false)
-      return
-    }
+    if (!gameId) return
 
-    if (gamePhase === "playing") {
-      // Game timer
-      gameTimerIntervalRef.current = setInterval(() => {
-        setTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(gameTimerIntervalRef.current!)
-            // Check who won based on strength
-            if (playerStrength > opponentStrength) {
-              setMessage("🎉 VICTORY! You pulled them over!")
-              setCoins((prev) => prev + 200)
-              onGameEnd(true)
-            } else {
-              setMessage("💀 DEFEAT! You were pulled over.")
-              setIsEliminated(true)
-              onGameEnd(false)
-            }
-            setGamePhase("finished")
-            return 0
+    const tugOfWarRef = ref(database, `games/${gameId}/tugOfWar`)
+    const unsubscribe = onValue(tugOfWarRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) {
+        setTeam1Strength(data.team1Strength || 0)
+        setTeam2Strength(data.team2Strength || 0)
+        setGamePhase(data.phase || "waiting")
+        setTimer(data.timer || 30)
+        setTeams(data.teams || { team1: [], team2: [] })
+
+        // Find player's team
+        if (data.teams) {
+          if (data.teams.team1?.find((p: Player) => p.id === player.id)) {
+            setPlayerTeam(1)
+          } else if (data.teams.team2?.find((p: Player) => p.id === player.id)) {
+            setPlayerTeam(2)
           }
-          return prev - 1
-        })
-      }, 1000)
+        }
 
-      // Opponent AI - gets stronger over time but player can overcome with rapid clicking
-      opponentIntervalRef.current = setInterval(() => {
-        setOpponentStrength((prev) => {
-          const increase = Math.random() * 3 + 1 // 1-4 strength per interval
-          const newStrength = Math.min(prev + increase, 100)
-
-          // Check for immediate win conditions
-          if (newStrength >= 100 && playerStrength < 100) {
-            setTimeout(() => {
-              setMessage("💀 DEFEAT! You were pulled over.")
-              setIsEliminated(true)
-              setGamePhase("finished")
-            }, 100)
+        // Check for game end
+        if (data.phase === "finished") {
+          const winningTeam = data.team1Strength > data.team2Strength ? 1 : 2
+          if (playerTeam === winningTeam) {
+            setMessage("🎉 YOUR TEAM WON!")
+            setCoins((prev) => prev + 200)
+            onGameEnd(true)
+          } else {
+            setMessage("💀 YOUR TEAM LOST!")
+            setIsEliminated(true)
+            onGameEnd(false)
           }
-
-          return newStrength
-        })
-      }, 800) // Opponent pulls every 0.8 seconds
-    }
-
-    return () => {
-      if (opponentIntervalRef.current) clearInterval(opponentIntervalRef.current)
-      if (gameTimerIntervalRef.current) clearInterval(gameTimerIntervalRef.current)
-    }
-  }, [gamePhase, isEliminated, onGameEnd, setCoins, playerStrength])
-
-  // Separate effect to check for player victory
-  useEffect(() => {
-    if (playerStrength >= 100 && gamePhase === "playing") {
-      setMessage("🎉 VICTORY! You pulled them over!")
-      setCoins((prev) => prev + 200)
-      setGamePhase("finished")
-      setTimeout(() => onGameEnd(true), 1000)
-    }
-  }, [playerStrength, gamePhase, onGameEnd, setCoins])
-
-  const handlePull = () => {
-    if (gamePhase !== "playing" || isEliminated) return
-
-    setPlayerStrength((prev) => {
-      const increase = Math.random() * 8 + 4 // 4-12 strength per click
-      return Math.min(prev + increase, 100)
+        }
+      }
     })
 
-    // Reduce opponent strength slightly when player pulls hard
-    setOpponentStrength((prev) => Math.max(prev - 1, 0))
+    return () => unsubscribe()
+  }, [gameId, player.id, playerTeam, onGameEnd, setCoins])
+
+  const handlePull = async () => {
+    if (gamePhase !== "playing" || isEliminated || !playerTeam) return
+
+    const strengthKey = playerTeam === 1 ? "team1Strength" : "team2Strength"
+    const currentStrength = playerTeam === 1 ? team1Strength : team2Strength
+
+    await update(ref(database, `games/${gameId}/tugOfWar`), {
+      [strengthKey]: Math.min(currentStrength + 3, 100),
+    })
   }
 
-  const startGame = () => {
-    setPlayerStrength(0)
-    setOpponentStrength(0)
-    setTimer(20)
-    setIsEliminated(false)
-    setMessage("")
-    clickCount.current = 0
-    setGamePhase("playing")
+  const startGame = async () => {
+    // Assign players to teams randomly
+    const playersRef = ref(database, `games/${gameId}/players`)
+    const snapshot = await onValue(playersRef, async (playersSnapshot) => {
+      const playersData = playersSnapshot.val()
+      if (playersData) {
+        const alivePlayers = Object.values(playersData).filter((p: any) => !p.isEliminated)
+        const shuffled = [...alivePlayers].sort(() => Math.random() - 0.5)
+        const mid = Math.ceil(shuffled.length / 2)
+
+        const team1 = shuffled.slice(0, mid)
+        const team2 = shuffled.slice(mid)
+
+        await update(ref(database, `games/${gameId}/tugOfWar`), {
+          phase: "playing",
+          timer: 30,
+          team1Strength: 0,
+          team2Strength: 0,
+          teams: { team1, team2 },
+        })
+      }
+    })
+    snapshot()
   }
 
   return (
@@ -134,26 +116,49 @@ export function TugOfWar({ onGameEnd, player }: TugOfWarProps) {
       )}
 
       <div className="absolute top-4 left-4 text-lg font-mono text-squidGreen">
-        Player: #{player.number} {player.name}
+        Player: #{player.number} {player.name} {playerTeam && `(Team ${playerTeam})`}
       </div>
       <div className="absolute top-4 right-4 text-lg font-mono text-squidPink">Time Left: {timer}s</div>
 
       <h2 className="text-5xl font-bold mb-8 text-center text-white drop-shadow-lg">
-        {message || "Tug of War: Pull to Survive!"}
+        {message || "Tug of War: Team Battle!"}
       </h2>
 
-      <div className="w-full max-w-2xl space-y-6 mb-8">
+      <div className="w-full max-w-4xl space-y-6 mb-8">
         <div className="flex items-center justify-between text-xl font-bold text-squidGreen">
-          <span>Your Team</span>
-          <span>{playerStrength.toFixed(0)}%</span>
+          <span>Team 1 ({teams.team1.length} players)</span>
+          <span>{team1Strength.toFixed(0)}%</span>
         </div>
-        <Progress value={playerStrength} className="w-full h-6 bg-squidGray/50 [&>*]:bg-squidGreen" />
+        <Progress value={team1Strength} className="w-full h-6 bg-squidGray/50 [&>*]:bg-squidGreen" />
 
         <div className="flex items-center justify-between text-xl font-bold text-squidRed">
-          <span>Opponent Team</span>
-          <span>{opponentStrength.toFixed(0)}%</span>
+          <span>Team 2 ({teams.team2.length} players)</span>
+          <span>{team2Strength.toFixed(0)}%</span>
         </div>
-        <Progress value={opponentStrength} className="w-full h-6 bg-squidGray/50 [&>*]:bg-squidRed" />
+        <Progress value={team2Strength} className="w-full h-6 bg-squidGray/50 [&>*]:bg-squidRed" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-8 mb-8 w-full max-w-4xl">
+        <div className="text-center">
+          <h3 className="text-xl font-bold text-squidGreen mb-2">Team 1</h3>
+          <div className="space-y-1">
+            {teams.team1.map((p) => (
+              <div key={p.id} className="text-sm text-squidLightGray">
+                #{p.number} {p.name}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="text-center">
+          <h3 className="text-xl font-bold text-squidRed mb-2">Team 2</h3>
+          <div className="space-y-1">
+            {teams.team2.map((p) => (
+              <div key={p.id} className="text-sm text-squidLightGray">
+                #{p.number} {p.name}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {gamePhase === "waiting" && (
@@ -165,21 +170,20 @@ export function TugOfWar({ onGameEnd, player }: TugOfWarProps) {
         </Button>
       )}
 
-      {gamePhase === "playing" && !isEliminated && (
+      {gamePhase === "playing" && !isEliminated && playerTeam && (
         <Button
           onClick={handlePull}
-          className={cn(
-            "bg-squidGreen hover:bg-squidGreen/80 text-white font-bold py-4 px-8 text-xl rounded-lg transition-colors duration-300",
-            "active:scale-95", // Visual feedback on click
-          )}
+          className={`text-white font-bold py-4 px-8 text-xl rounded-lg transition-colors duration-300 active:scale-95 ${
+            playerTeam === 1 ? "bg-squidGreen hover:bg-squidGreen/80" : "bg-squidRed hover:bg-squidRed/80"
+          }`}
         >
-          PULL! (Click Rapidly)
+          PULL FOR TEAM {playerTeam}! (Click Rapidly)
         </Button>
       )}
 
       {gamePhase === "finished" && (
         <Button
-          onClick={() => onGameEnd(playerStrength >= 100)}
+          onClick={() => onGameEnd(!isEliminated)}
           className="bg-squidGreen hover:bg-squidGreen/80 text-white font-bold py-4 px-8 text-xl rounded-lg transition-colors duration-300"
         >
           Continue

@@ -7,7 +7,6 @@ import { AdminLogin } from "@/components/admin-login"
 import { AdminDashboard } from "@/components/admin-dashboard"
 import { Lobby } from "@/components/lobby"
 import { RedLightGreenLight } from "@/components/game-red-light-green-light"
-import { Honeycomb } from "@/components/game-honeycomb"
 import { TugOfWar } from "@/components/game-tug-of-war"
 import { Marbles } from "@/components/game-marbles"
 import { GlassBridge } from "@/components/game-glass-bridge"
@@ -20,7 +19,6 @@ type View =
   | "lobby"
   | "admin"
   | "red-light-green-light"
-  | "honeycomb"
   | "tug-of-war"
   | "marbles"
   | "glass-bridge"
@@ -41,7 +39,7 @@ export default function SquidGameWebsite() {
   const [players, setPlayers] = useState<Player[]>([])
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null)
   const [currentPlayerId, setCurrentPlayerId] = useLocalStorage<string | null>("squid-game-player-id", null)
-  const [currentRound, setCurrentRound] = useState(0) // 0: Lobby, 1: RLGL, 2: Honeycomb, etc.
+  const [currentRound, setCurrentRound] = useState(0) // 0: Lobby, 1: RLGL, 2: Tug of War, etc.
   const [coins, setCoins] = useLocalStorage<number>("squid-game-coins", 0)
   const [message, setMessage] = useState("") // For game over messages and general info
 
@@ -94,22 +92,19 @@ export default function SquidGameWebsite() {
               setCurrentView("red-light-green-light")
               break
             case 2:
-              setCurrentView("honeycomb")
-              break
-            case 3:
               setCurrentView("tug-of-war")
               break
-            case 4:
+            case 3:
               setCurrentView("marbles")
               break
-            case 5:
+            case 4:
               setCurrentView("glass-bridge")
               break
-            case 6:
+            case 5:
               setCurrentView("squid-game")
               break
             default:
-              if (data.currentRound > 6) {
+              if (data.currentRound > 5) {
                 setMessage("All games completed! Congratulations! You are the last survivor.")
                 setCurrentView("game-over")
               }
@@ -240,18 +235,15 @@ export default function SquidGameWebsite() {
       case "red-light-green-light":
         if (!currentPlayer) return commonEliminatedScreen
         return <RedLightGreenLight onGameEnd={handleGameEnd} player={currentPlayer} />
-      case "honeycomb":
-        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
-        return <Honeycomb onGameEnd={handleGameEnd} player={currentPlayer} />
       case "tug-of-war":
         if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
-        return <TugOfWar onGameEnd={handleGameEnd} player={currentPlayer} />
+        return <TugOfWar onGameEnd={handleGameEnd} player={currentPlayer} gameId={gameId} />
       case "marbles":
         if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <Marbles onGameEnd={handleGameEnd} player={currentPlayer} />
       case "glass-bridge":
         if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
-        return <GlassBridge onGameEnd={handleGameEnd} player={currentPlayer} />
+        return <GlassBridge onGameEnd={handleGameEnd} player={currentPlayer} gameId={gameId} />
       case "squid-game":
         if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen
         return <SquidGame onGameEnd={handleGameEnd} player={currentPlayer} />
