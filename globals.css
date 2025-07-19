@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 10% 8%; /* squidDark */
+    --foreground: 210 20% 98%; /* squidLightGray */
+
+    --card: 220 10% 12%; /* squidGray slightly darker */
+    --card-foreground: 210 20% 98%;
+
+    --popover: 220 10% 12%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 355 80% 48%; /* squidRed */
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 155 80% 30%; /* squidGreen */
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 220 10% 15%; /* slightly lighter squidGray */
+    --muted-foreground: 215 10% 60%;
+
+    --accent: 330 100% 60%; /* squidPink */
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 80% 50%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 220 10% 20%;
+    --input: 220 10% 20%;
+    --ring: 330 100% 60%; /* squidPink */
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Roboto Mono", monospace; /* A more thematic font */
+  }
+}
+
+/* Custom scrollbar for a more themed look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}

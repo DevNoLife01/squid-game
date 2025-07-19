@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squid Game - Multiplayer</title>
+    
+    <!-- React and Babel CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        squidRed: '#E50914',
+                        squidGreen: '#00A86B',
+                        squidPink: '#FF007F',
+                        squidDark: '#0A0A0A',
+                        squidGray: '#1A1A1A',
+                        squidLightGray: '#AAAAAA',
+                        squidGold: '#FFD700',
+                    },
+                    fontFamily: {
+                        'orbitron': ['Orbitron', 'monospace'],
+                        'mono': ['Roboto Mono', 'monospace'],
+                    },
+                    keyframes: {
+                        'squid-pulse': {
+                            '0%, 100%': { 
+                                transform: 'scale(1)',
+                                textShadow: '0 0 20px #FF007F, 0 0 40px #FF007F, 0 0 60px #FF007F'
+                            },
+                            '50%': { 
+                                transform: 'scale(1.05)',
+                                textShadow: '0 0 30px #FF007F, 0 0 60px #FF007F, 0 0 90px #FF007F'
+                            },
+                        },
+                        'logo-spin': {
+                            '0%': { transform: 'rotate(0deg) scale(0.8)', opacity: '0' },
+                            '50%': { transform: 'rotate(180deg) scale(1.1)', opacity: '0.8' },
+                            '100%': { transform: 'rotate(360deg) scale(1)', opacity: '1' },
+                        },
+                        'slide-in-left': {
+                            '0%': { transform: 'translateX(-100%)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        },
+                        'slide-in-right': {
+                            '0%': { transform: 'translateX(100%)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        },
+                        'slide-in-up': {
+                            '0%': { transform: 'translateY(100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        'slide-in-down': {
+                            '0%': { transform: 'translateY(-100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        'fade-in': {
+                            '0%': { opacity: '0', transform: 'scale(0.9)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' },
+                        },
+                        'bounce-in': {
+                            '0%': { transform: 'scale(0.3)', opacity: '0' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '70%': { transform: 'scale(0.9)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        'glitch': {
+                            '0%, 100%': { transform: 'translate(0)' },
+                            '20%': { transform: 'translate(-2px, 2px)' },
+                            '40%': { transform: 'translate(-2px, -2px)' },
+                            '60%': { transform: 'translate(2px, 2px)' },
+                            '80%': { transform: 'translate(2px, -2px)' },
+                        },
+                        'loading-dots': {
+                            '0%, 80%, 100%': { transform: 'scale(0)' },
+                            '40%': { transform: 'scale(1)' },
+                        },
+                        'card-hover': {
+                            '0%': { transform: 'translateY(0) rotateX(0)' },
+                            '100%': { transform: 'translateY(-10px) rotateX(5deg)' },
+                        },
+                        'neon-border': {
+                            '0%, 100%': { 
+                                boxShadow: '0 0 5px #FF007F, 0 0 10px #FF007F, 0 0 15px #FF007F, inset 0 0 5px #FF007F'
+                            },
+                            '50%': { 
+                                boxShadow: '0 0 10px #FF007F, 0 0 20px #FF007F, 0 0 30px #FF007F, inset 0 0 10px #FF007F'
+                            },
+                        },
+                        'particle-float': {
+                            '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+                            '33%': { transform: 'translateY(-30px) rotate(120deg)' },
+                            '66%': { transform: 'translateY(-60px) rotate(240deg)' },
+                        },
+                    },
+                    animation: {
+                        'squid-pulse': 'squid-pulse 2s ease-in-out infinite',
+                        'logo-spin': 'logo-spin 2s ease-out',
+                        'slide-in-left': 'slide-in-left 0.6s ease-out',
+                        'slide-in-right': 'slide-in-right 0.6s ease-out',
+                        'slide-in-up': 'slide-in-up 0.6s ease-out',
+                        'slide-in-down': 'slide-in-down 0.6s ease-out',
+                        'fade-in': 'fade-in 0.8s ease-out',
+                        'bounce-in': 'bounce-in 0.8s ease-out',
+                        'glitch': 'glitch 0.3s ease-in-out infinite',
+                        'loading-dots': 'loading-dots 1.4s ease-in-out infinite',
+                        'card-hover': 'card-hover 0.3s ease-out forwards',
+                        'neon-border': 'neon-border 2s ease-in-out infinite',
+                        'particle-float': 'particle-float 6s ease-in-out infinite',
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background: linear-gradient(135deg, #0A0A0A 0%, #1A1A1A 50%, #0A0A0A 100%);
+            color: #AAAAAA;
+            overflow-x: hidden;
+        }
+        
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(229, 9, 20, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 0, 127, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 168, 107, 0.05) 0%, transparent 50%);
+            animation: particle-float 20s ease-in-out infinite;
+        }
+        
+        /* Particle System */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #FF007F;
+            border-radius: 50%;
+            animation: particle-float 8s linear infinite;
+        }
+        
+        .particle:nth-child(2n) {
+            background: #00A86B;
+            animation-duration: 12s;
+            animation-delay: -2s;
+        }
+        
+        .particle:nth-child(3n) {
+            background: #E50914;
+            animation-duration: 10s;
+            animation-delay: -4s;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0A0A0A;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, #E50914, #FF007F);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, #FF007F, #E50914);
+        }
+        
+        /* Loading Animation */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle, #1A1A1A 0%, #0A0A0A 100%);
+        }
+        
+        .squid-logo {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #E50914, #FF007F, #00A86B);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: squid-pulse 2s ease-in-out infinite, logo-spin 2s ease-out;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 8px;
+            margin-top: 2rem;
+        }
+        
+        .loading-dot {
+            width: 12px;
+            height: 12px;
+            background: #FF007F;
+            border-radius: 50%;
+            animation: loading-dots 1.4s ease-in-out infinite;
+        }
+        
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+            background: #E50914;
+        }
+        
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+            background: #00A86B;
+        }
+        
+        /* Enhanced Button Styles */
+        .btn-enhanced {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: linear-gradient(45deg, var(--bg-color), var(--bg-color)) padding-box,
+                        linear-gradient(45deg, #FF007F, #E50914) border-box;
+        }
+        
+        .btn-enhanced::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-enhanced:hover::before {
+            left: 100%;
+        }
+        
+        .btn-enhanced:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 0, 127, 0.3);
+        }
+        
+        /* Card Enhancements */
+        .card-enhanced {
+            backdrop-filter: blur(10px);
+            background: rgba(26, 26, 26, 0.8);
+            border: 1px solid rgba(255, 0, 127, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .card-enhanced:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(255, 0, 127, 0.2);
+            border-color: rgba(255, 0, 127, 0.6);
+        }
+        
+        /* Game Screen Transitions */
+        .screen-transition {
+            animation: fade-in 0.8s ease-out;
+        }
+        
+        /* Glitch Effect for Elimination */
+        .elimination-glitch {
+            animation: glitch 0.3s ease-in-out infinite;
+        }
+        
+        /* Progress Bar Enhancements */
+        .progress-enhanced {
+            background: linear-gradient(90deg, #1A1A1A, #333333);
+            border: 1px solid rgba(255, 0, 127, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-enhanced::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: particle-float 2s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+    <div id="particles"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // Firebase Configuration - Updated with your credentials
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRuM4wLGmEPIAlsDPSuwXe0zpGBgy_qZY",
+            authDomain: "squid-game-9e67b.firebaseapp.com",
+            databaseURL: "https://squid-game-9e67b-default-rtdb.firebaseio.com/",
+            projectId: "squid-game-9e67b",
+            storageBucket: "squid-game-9e67b.firebasestorage.app",
+            messagingSenderId: "293616185386",
+            appId: "1:293616185386:web:0a4111289743f779639353",
+            measurementId: "G-GP1SVFN73K"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Particle System Component
+        const ParticleSystem = () => {
+            useEffect(() => {
+                const particlesContainer = document.getElementById('particles');
+                if (!particlesContainer) return;
+
+                const createParticle = () => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 8 + 's';
+                    particlesContainer.appendChild(particle);
+
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 8000);
+                };
+
+                const interval = setInterval(createParticle, 500);
+                
+                // Create initial particles
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(createParticle, i * 100);
+                }
+
+                return () => clearInterval(interval);
+            }, []);
+
+            return null;
+        };
+
+        // Loading Screen Component
+        const LoadingScreen = ({ onLoadComplete }) => {
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    onLoadComplete();
+                }, 3000);
+
+                return () => clearTimeout(timer);
+            }, [onLoadComplete]);
+
+            return (
+                <div className="loading-container screen-transition">
+                    <div className="squid-logo font-orbitron">
+                        SQUID GAME
+                    </div>
+                    <div className="text-squidPink text-xl mt-4 animate-fade-in">
+                        Multiplayer Edition
+                    </div>
+                    <div className="loading-dots">
+                        <div className="loading-dot"></div>
+                        <div className="loading-dot"></div>
+                        <div className="loading-dot"></div>
+                    </div>
+                    <div className="text-squidLightGray text-sm mt-8 animate-slide-in-up">
+                        Connecting to game servers...
+                    </div>
+                </div>
+            );
+        };
+
+        // Utility Functions
+        const useLocalStorage = (key, initialValue) => {
+            const [storedValue, setStoredValue] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) {
+                    console.error(error);
+                    return initialValue;
+                }
+            });
+
+            const setValue = (value) => {
+                try {
+                    setStoredValue(value);
+                    window.localStorage.setItem(key, JSON.stringify(value));
+                } catch (error) {
+                    console.error(error);
+                }
+            };
+
+            return [storedValue, setValue];
+        };
+
+        const playSound = (src) => {
+            const audio = new Audio(src);
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log("Audio play failed:", e));
+        };
+
+        // Enhanced Button Component
+        const Button = ({ children, onClick, disabled, className, variant = "primary", ...props }) => {
+            const baseClasses = "btn-enhanced px-6 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none";
+            
+            const variants = {
+                primary: "bg-squidRed text-white hover:bg-squidRed/90",
+                secondary: "bg-squidGreen text-white hover:bg-squidGreen/90",
+                accent: "bg-squidPink text-white hover:bg-squidPink/90",
+                ghost: "bg-transparent border-2 border-squidPink text-squidPink hover:bg-squidPink hover:text-white",
+            };
+
+            return (
+                <button
+                    onClick={onClick}
+                    disabled={disabled}
+                    className={`${baseClasses} ${variants[variant]} ${className}`}
+                    style={{ '--bg-color': variant === 'primary' ? '#E50914' : variant === 'secondary' ? '#00A86B' : '#FF007F' }}
+                    {...props}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        // Enhanced Input Component
+        const Input = ({ className, ...props }) => (
+            <input
+                className={`px-4 py-3 rounded-lg border-2 border-squidPink/30 bg-squidGray/50 text-squidLightGray focus:outline-none focus:border-squidPink focus:ring-2 focus:ring-squidPink/20 transition-all duration-300 backdrop-blur-sm ${className}`}
+                {...props}
+            />
+        );
+
+        // Enhanced Card Components
+        const Card = ({ children, className, animated = true }) => (
+            <div className={`card-enhanced rounded-xl shadow-2xl ${animated ? 'animate-bounce-in' : ''} ${className}`}>
+                {children}
+            </div>
+        );
+
+        const CardHeader = ({ children, className }) => (
+            <div className={`p-6 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const CardTitle = ({ children, className }) => (
+            <h3 className={`font-bold text-2xl font-orbitron ${className}`}>
+                {children}
+            </h3>
+        );
+
+        const CardContent = ({ children, className }) => (
+            <div className={`p-6 pt-0 ${className}`}>
+                {children}
+            </div>
+        );
+
+        // Enhanced Progress Component
+        const Progress = ({ value, className, animated = true }) => (
+            <div className={`progress-enhanced w-full h-4 rounded-full ${className}`}>
+                <div
+                    className={`h-full bg-gradient-to-r from-squidGreen to-squidPink rounded-full transition-all duration-500 ${animated ? 'animate-pulse' : ''}`}
+                    style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
+                />
+            </div>
+        );
+
+        // Admin Login Component
+        const AdminLogin = ({ onLoginSuccess }) => {
+            const [username, setUsername] = useState("");
+            const [password, setPassword] = useState("");
+            const [error, setError] = useState("");
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (username === "DevNoLife" && password === "enaz8karakter") {
+                    onLoginSuccess();
+                } else {
+                    setError("Invalid username or password.");
+                }
+            };
+
+            return (
+                <div className="flex items-center justify-center min-h-screen bg-squidDark screen-transition">
+                    <Card className="w-full max-w-md animate-slide-in-down">
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-squidRed animate-squid-pulse">🎭 Admin Access</CardTitle>
+                            <p className="text-squidLightGray mt-2 animate-fade-in">Enter your credentials to manage the game.</p>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleLogin} className="space-y-6">
+                                <Input
+                                    type="text"
+                                    placeholder="👤 Username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full animate-slide-in-left"
+                                    required
+                                />
+                                <Input
+                                    type="password"
+                                    placeholder="🔒 Password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full animate-slide-in-right"
+                                    required
+                                />
+                                {error && <p className="text-squidRed text-sm text-center animate-bounce-in elimination-glitch">{error}</p>}
+                                <Button
+                                    type="submit"
+                                    className="w-full animate-slide-in-up"
+                                    variant="primary"
+                                >
+                                    🚀 Login
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
+            );
+        };
+
+        // Admin Dashboard Component
+        const AdminDashboard = ({ onLogout, players, gameId, setGameId, currentRound }) => {
+            const [showSuccess, setShowSuccess] = useState(false);
+
+            const handleCreateGame = async () => {
+                const generatedId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                setGameId(generatedId);
+
+                await database.ref(`games/${generatedId}`).set({
+                    currentRound: 0,
+                    status: "lobby",
+                    players: {}
+                });
+
+                // Show success message
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 3000);
+            };
+
+            const handleStartGame = async () => {
+                if (!gameId) return;
+                await database.ref(`games/${gameId}`).update({
+                    currentRound: 1,
+                    status: "playing"
+                });
+            };
+
+            const handleEliminatePlayer = async (playerId) => {
+                if (!gameId) return;
+                await database.ref(`games/${gameId}/players/${playerId}`).update({
+                    isEliminated: true
+                });
+            };
+
+            const handleNextRound = async () => {
+                if (!gameId) return;
+                const nextRound = currentRound + 1;
+                await database.ref(`games/${gameId}`).update({
+                    currentRound: nextRound
+                });
+            };
+
+            const [announcementText, setAnnouncementText] = useState("");
+            const [showAnnouncementInput, setShowAnnouncementInput] = useState(false);
+
+            const handleSendAnnouncement = async () => {
+                if (!gameId || !announcementText.trim()) return;
+                
+                const announcement = {
+                    text: announcementText.trim(),
+                    timestamp: Date.now(),
+                    id: Math.random().toString(36).substring(2, 9)
+                };
+                
+                await database.ref(`games/${gameId}/announcement`).set(announcement);
+                setAnnouncementText("");
+                setShowAnnouncementInput(false);
+                
+                // Auto-clear announcement after 10 seconds
+                setTimeout(async () => {
+                    await database.ref(`games/${gameId}/announcement`).remove();
+                }, 10000);
+            };
+
+            return (
+                <div className="min-h-screen bg-squidDark text-squidLightGray p-8 screen-transition">
+                    <div className="max-w-6xl mx-auto">
+                        <h1 className="text-5xl font-bold text-squidRed mb-8 text-center font-orbitron animate-squid-pulse">
+                            🎮 Admin Dashboard
+                        </h1>
+                        
+                        {showSuccess && (
+                            <div className="mb-6 p-4 bg-squidGreen/20 border border-squidGreen rounded-lg text-center animate-bounce-in">
+                                <p className="text-squidGreen font-bold text-xl">
+                                    🎉 Game Created Successfully! Share the Game ID with players.
+                                </p>
+                            </div>
+                        )}
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                            <Card className="animate-slide-in-left">
+                                <CardHeader>
+                                    <CardTitle className="text-squidPink">🎯 Game Session</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center space-x-2">
+                                        <label className="text-squidLightGray font-semibold">🆔 Current Game ID:</label>
+                                        <Input
+                                            value={gameId || "N/A"}
+                                            readOnly
+                                            className="flex-1 text-squidGreen font-mono text-lg animate-neon-border"
+                                        />
+                                        {gameId && (
+                                            <Button
+                                                onClick={() => navigator.clipboard.writeText(gameId)}
+                                                className="px-3 py-2 text-sm"
+                                                variant="ghost"
+                                            >
+                                                📋 Copy
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <Button
+                                        onClick={handleCreateGame}
+                                        className="w-full"
+                                        variant="secondary"
+                                    >
+                                        ✨ {gameId ? "Generate New Game ID" : "Create New Game"}
+                                    </Button>
+                                    {gameId && (
+                                        <Button
+                                            onClick={handleStartGame}
+                                            className="w-full animate-bounce-in"
+                                            variant="primary"
+                                        >
+                                            🚀 Start Game
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={handleNextRound}
+                                        disabled={!gameId || currentRound >= 6}
+                                        className="w-full"
+                                        variant="accent"
+                                    >
+                                        ⏭️ Next Round (Current: {currentRound})
+                                    </Button>
+                                    <div className="mt-4 space-y-2">
+                                        <Button
+                                            onClick={() => setShowAnnouncementInput(!showAnnouncementInput)}
+                                            className="w-full"
+                                            variant="accent"
+                                        >
+                                            📢 {showAnnouncementInput ? "Cancel Announcement" : "Send Announcement"}
+                                        </Button>
+                                        
+                                        {showAnnouncementInput && (
+                                            <div className="space-y-3 animate-slide-in-down">
+                                                <Input
+                                                    type="text"
+                                                    placeholder="📝 Type your announcement here..."
+                                                    value={announcementText}
+                                                    onChange={(e) => setAnnouncementText(e.target.value)}
+                                                    className="w-full"
+                                                    maxLength={200}
+                                                />
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm text-squidLightGray">
+                                                        {announcementText.length}/200 characters
+                                                    </span>
+                                                    <Button
+                                                        onClick={handleSendAnnouncement}
+                                                        disabled={!announcementText.trim()}
+                                                        className="px-6"
+                                                        variant="secondary"
+                                                    >
+                                                        🚀 Send Now
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="animate-slide-in-right">
+                                <CardHeader>
+                                    <CardTitle className="text-squidGreen">👥 Player Management</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <h3 className="text-xl font-semibold text-squidLightGray">
+                                        🎭 Connected Players ({players.length})
+                                    </h3>
+                                    <div className="h-64 w-full rounded-lg border-2 border-squidPink/30 p-4 bg-squidGray/30 overflow-y-auto backdrop-blur-sm">
+                                        {players.length === 0 ? (
+                                            <p className="text-squidLightGray/70 text-center animate-pulse">
+                                                🔍 No players connected yet...
+                                            </p>
+                                        ) : (
+                                            <ul className="space-y-3">
+                                                {players.map((player, index) => (
+                                                    <li key={player.id} className={`flex items-center justify-between text-squidLightGray p-3 rounded-lg bg-squidGray/50 animate-slide-in-up`} style={{ animationDelay: `${index * 0.1}s` }}>
+                                                        <span className="flex items-center space-x-3">
+                                                            <span className="font-mono text-squidGreen font-bold">#{player.number}</span>
+                                                            <span className="font-semibold">{player.name}</span>
+                                                            {player.isEliminated && <span className="text-squidRed font-bold animate-pulse">💀 ELIMINATED</span>}
+                                                        </span>
+                                                        {!player.isEliminated && (
+                                                            <Button
+                                                                onClick={() => handleEliminatePlayer(player.id)}
+                                                                className="text-sm px-3 py-1"
+                                                                variant="primary"
+                                                            >
+                                                                ❌ Eliminate
+                                                            </Button>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <div className="text-center mt-8">
+                            <Button
+                                onClick={onLogout}
+                                className="font-bold py-3 px-8 animate-bounce-in"
+                                variant="ghost"
+                            >
+                                🚪 Logout
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Lobby Component
+        const Lobby = ({ onJoinGame, players, gameId, onStartGame, isAdmin, currentRound, currentPlayerId }) => {
+            const [joinCode, setJoinCode] = useState("");
+            const [playerName, setPlayerName] = useState("");
+            const [error, setError] = useState("");
+            const [coins] = useLocalStorage("squid-game-coins", 0);
+
+            const handleJoin = async () => {
+                if (!joinCode || !playerName) {
+                    setError("Please enter a game code and your player name.");
+                    return;
+                }
+
+                const snapshot = await database.ref(`games/${joinCode}`).once('value');
+                if (!snapshot.exists()) {
+                    setError("Game code does not exist.");
+                    return;
+                }
+
+                setError("");
+                const newPlayerId = `player-${Date.now()}`;
+                onJoinGame(joinCode, playerName, newPlayerId);
+            };
+
+            return (
+                <div className="min-h-screen bg-squidDark text-squidLightGray p-8 flex flex-col items-center justify-center screen-transition">
+                    <div className="max-w-4xl w-full mx-auto">
+                        <h1 className="text-6xl font-bold text-squidRed mb-8 text-center font-orbitron animate-squid-pulse">
+                            🦑 SQUID GAME
+                        </h1>
+                        <p className="text-xl text-squidPink text-center mb-8 animate-fade-in">
+                            🎮 Multiplayer Battle Royale Edition
+                        </p>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <Card className="animate-slide-in-left">
+                                <CardHeader>
+                                    <CardTitle className="text-squidPink text-center">🎯 Game Lobby</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    {!gameId || !currentPlayerId ? (
+                                        <div className="space-y-4">
+                                            <Input
+                                                type="text"
+                                                placeholder="👤 Your Player Name"
+                                                value={playerName}
+                                                onChange={(e) => setPlayerName(e.target.value)}
+                                                className="w-full animate-slide-in-up"
+                                            />
+                                            <Input
+                                                type="text"
+                                                placeholder="🔑 Enter Game Code"
+                                                value={joinCode}
+                                                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                                className="w-full animate-slide-in-up"
+                                                style={{ animationDelay: '0.1s' }}
+                                            />
+                                            {error && <p className="text-squidRed text-sm text-center animate-bounce-in elimination-glitch">{error}</p>}
+                                            <Button
+                                                onClick={handleJoin}
+                                                className="w-full animate-slide-in-up"
+                                                style={{ animationDelay: '0.2s' }}
+                                                variant="secondary"
+                                            >
+                                                🚀 Join Game
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center space-y-4 animate-bounce-in">
+                                            <div className="p-4 bg-squidGray/50 rounded-lg border border-squidGreen/30">
+                                                <p className="text-xl text-squidLightGray mb-2">
+                                                    🎮 Joined Game: <span className="font-mono text-squidGreen font-bold text-2xl animate-neon-border">{gameId}</span>
+                                                </p>
+                                                <p className="text-lg text-squidLightGray mb-2">
+                                                    🎯 Current Round: <span className="font-bold text-squidPink text-xl">{currentRound}</span>
+                                                </p>
+                                                <p className="text-lg text-squidLightGray">
+                                                    💰 Your Coins: <span className="font-bold text-squidGold text-xl">{coins}</span>
+                                                </p>
+                                            </div>
+                                            {isAdmin && (
+                                                <Button
+                                                    onClick={onStartGame}
+                                                    className="w-full animate-bounce-in"
+                                                    variant="primary"
+                                                >
+                                                    🎬 Start Game
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card className="animate-slide-in-right">
+                                <CardHeader>
+                                    <CardTitle className="text-squidGreen text-center">👥 Players in Lobby ({players.length})</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-64 w-full rounded-lg border-2 border-squidPink/30 p-4 bg-squidGray/30 overflow-y-auto backdrop-blur-sm">
+                                        {players.length === 0 ? (
+                                            <p className="text-squidLightGray/70 text-center animate-pulse">
+                                                ⏳ Waiting for players...
+                                            </p>
+                                        ) : (
+                                            <ul className="space-y-3">
+                                                {players.map((player, index) => (
+                                                    <li key={player.id} className={`flex items-center justify-between text-squidLightGray p-3 rounded-lg bg-squidGray/50 animate-slide-in-up`} style={{ animationDelay: `${index * 0.1}s` }}>
+                                                        <div className="flex items-center space-x-3">
+                                                            <span className="font-mono text-squidGreen font-bold text-lg">#{player.number}</span>
+                                                            <span className="font-semibold">{player.name}</span>
+                                                        </div>
+                                                        {player.isEliminated && <span className="text-squidRed font-bold animate-pulse">💀 ELIMINATED</span>}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Red Light Green Light Game Component (Enhanced)
+        const RedLightGreenLight = ({ onGameEnd, player }) => {
+            const [gamePhase, setGamePhase] = useState("waiting");
+            const [timer, setTimer] = useState(30);
+            const [roundTimer, setRoundTimer] = useState(0);
+            const [progress, setProgress] = useState(0);
+            const [isMoving, setIsMoving] = useState(false);
+            const [isEliminated, setIsEliminated] = useState(player.isEliminated);
+            const [message, setMessage] = useState("");
+            const [coins, setCoins] = useLocalStorage("squid-game-coins", 0);
+
+            const dollRef = useRef(null);
+            const eliminationTimeoutRef = useRef(null);
+
+            useEffect(() => {
+                if (isEliminated) {
+                    setMessage("💀 ELIMINATED!");
+                    onGameEnd(false);
+                    return;
+                }
+
+                if (gamePhase === "finished") {
+                    setMessage("🎉 SAFE! You crossed the line.");
+                    setCoins(prev => prev + 100);
+                    onGameEnd(true);
+                    return;
+                }
+
+                let gameInterval = null;
+                if (gamePhase !== "waiting") {
+                    gameInterval = setInterval(() => {
+                        setTimer(prev => {
+                            if (prev <= 1) {
+                                clearInterval(gameInterval);
+                                if (progress < 100) {
+                                    setIsEliminated(true);
+                                } else {
+                                    setGamePhase("finished");
+                                }
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                }
+
+                return () => {
+                    if (gameInterval) clearInterval(gameInterval);
+                };
+            }, [gamePhase, timer, progress, isEliminated, onGameEnd, setCoins]);
+
+            const startGame = () => {
+                setGamePhase("green");
+                setTimer(30);
+                setProgress(0);
+                setIsEliminated(false);
+                setMessage("");
+            };
+
+            return (
+                <div className="relative flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray p-4 overflow-hidden screen-transition">
+                    {isEliminated && (
+                        <div className="absolute inset-0 bg-squidRed/90 flex items-center justify-center z-50 animate-fade-in elimination-glitch">
+                            <h2 className="text-8xl font-bold text-white drop-shadow-lg font-orbitron">💀 ELIMINATED</h2>
+                        </div>
+                    )}
+
+                    <div className="absolute top-4 left-4 text-lg font-mono text-squidGreen animate-slide-in-left">
+                        🎭 Player: #{player.number} {player.name}
+                    </div>
+                    <div className="absolute top-4 right-4 text-lg font-mono text-squidPink animate-slide-in-right">
+                        ⏰ Time Left: {timer}s
+                    </div>
+
+                    <div className="relative w-full max-w-5xl h-80 bg-gradient-to-r from-squidGreen/20 via-squidPink/10 to-squidRed/20 rounded-xl overflow-hidden mb-8 border-2 border-squidPink/50 shadow-2xl shadow-squidPink/20 animate-bounce-in">
+                        <div
+                            ref={dollRef}
+                            className={`absolute top-0 right-0 w-32 h-full bg-gradient-to-b from-squidGray to-squidDark flex items-center justify-center text-6xl rounded-l-full transition-transform duration-500 animate-squid-pulse`}
+                            style={{ transform: gamePhase === "red" ? "rotateY(180deg)" : "rotateY(0deg)" }}
+                        >
+                            👧
+                        </div>
+                        <div className="absolute bottom-6 left-6 right-6">
+                            <Progress value={progress} className="w-full h-6 mb-2" animated={true} />
+                            <div className="text-center text-lg text-squidLightGray font-bold">
+                                🏃‍♂️ Progress: {progress.toFixed(0)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 className="text-6xl font-bold mb-8 text-center text-white drop-shadow-lg font-orbitron animate-squid-pulse">
+                        {message || "🚦 Red Light, Green Light"}
+                    </h2>
+
+                    <div className="text-4xl font-mono text-squidPink mb-8 animate-bounce-in">
+                        {gamePhase !== "waiting" && gamePhase !== "finished" && `⏱️ Phase Timer: ${roundTimer}s`}
+                    </div>
+
+                    {gamePhase === "waiting" && (
+                        <Button
+                            onClick={startGame}
+                            className="font-bold py-6 px-12 text-2xl rounded-xl animate-bounce-in"
+                            variant="primary"
+                        >
+                            🎬 Start Round
+                        </Button>
+                    )}
+
+                    {gamePhase !== "waiting" && gamePhase !== "finished" && !isEliminated && (
+                        <Button
+                            onMouseDown={() => setIsMoving(true)}
+                            onMouseUp={() => setIsMoving(false)}
+                            onTouchStart={() => setIsMoving(true)}
+                            onTouchEnd={() => setIsMoving(false)}
+                            className={`font-bold py-6 px-12 text-2xl rounded-xl transition-all duration-300 ${isMoving ? "scale-110 animate-pulse" : ""}`}
+                            variant="secondary"
+                        >
+                            {isMoving ? "🏃‍♂️ RUNNING..." : "🖱️ HOLD TO RUN"}
+                        </Button>
+                    )}
+
+                    {gamePhase === "finished" && (
+                        <Button
+                            onClick={() => onGameEnd(true)}
+                            className="font-bold py-6 px-12 text-2xl rounded-xl animate-bounce-in"
+                            variant="accent"
+                        >
+                            ➡️ Continue
+                        </Button>
+                    )}
+                </div>
+            );
+        };
+
+        // Game Over Component
+        const GameOver = ({ message, coins, onPlayAgain, onBackToLobby }) => {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray screen-transition">
+                    <div className="text-center animate-bounce-in">
+                        <h2 className="text-8xl font-bold text-squidRed mb-8 font-orbitron animate-squid-pulse elimination-glitch">
+                            💀 GAME OVER
+                        </h2>
+                        <p className="text-3xl text-squidLightGray mb-6 animate-fade-in">{message}</p>
+                        <p className="text-2xl text-squidGold mb-12 animate-slide-in-up">
+                            💰 Your final coins: <span className="font-bold text-4xl">{coins}</span>
+                        </p>
+                        <div className="space-y-4">
+                            <Button
+                                onClick={onPlayAgain}
+                                className="font-bold py-4 px-8 text-xl animate-slide-in-left"
+                                variant="secondary"
+                            >
+                                🔄 Play Again
+                            </Button>
+                            <Button
+                                onClick={onBackToLobby}
+                                className="font-bold py-4 px-8 text-xl animate-slide-in-right"
+                                variant="accent"
+                            >
+                                🏠 Back to Lobby
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Announcement Banner Component
+        const AnnouncementBanner = ({ announcement }) => {
+            if (!announcement) return null;
+            
+            return (
+                <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-squidRed via-squidPink to-squidRed p-4 shadow-2xl animate-slide-in-down">
+                    <div className="max-w-6xl mx-auto flex items-center justify-center">
+                        <div className="flex items-center space-x-3 text-white">
+                            <span className="text-2xl animate-bounce">📢</span>
+                            <span className="text-xl font-bold font-orbitron animate-squid-pulse">
+                                ADMIN ANNOUNCEMENT:
+                            </span>
+                            <span className="text-lg font-semibold">
+                                {announcement.text}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [isLoading, setIsLoading] = useState(true);
+            const [currentView, setCurrentView] = useState("lobby");
+            const [isAdminLoggedIn, setIsAdminLoggedIn] = useLocalStorage("squid-game-admin-logged-in", false); // Persist admin state
+            const [gameId, setGameId] = useState(null);
+            const [players, setPlayers] = useState([]);
+            const [currentPlayer, setCurrentPlayer] = useState(null);
+            const [currentPlayerId, setCurrentPlayerId] = useLocalStorage("squid-game-player-id", null);
+            const [currentRound, setCurrentRound] = useState(0);
+            const [coins] = useLocalStorage("squid-game-coins", 0);
+            const [message, setMessage] = useState("");
+            const [currentAnnouncement, setCurrentAnnouncement] = useState(null);
+
+            // Handle loading completion
+            const handleLoadComplete = () => {
+                setIsLoading(false);
+                // Check if admin was previously logged in
+                if (isAdminLoggedIn) {
+                    setCurrentView("admin");
+                }
+            };
+
+            // Firebase Realtime Database Listener
+            useEffect(() => {
+                if (!gameId) return;
+
+                const gameRef = database.ref(`games/${gameId}`);
+                const unsubscribe = gameRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setCurrentRound(data.currentRound || 0);
+                        const fetchedPlayers = [];
+                        if (data.players) {
+                            Object.keys(data.players).forEach((playerId) => {
+                                fetchedPlayers.push({ id: playerId, ...data.players[playerId] });
+                            });
+                        }
+                        setPlayers(fetchedPlayers);
+
+                        // Handle announcements
+                        if (data.announcement) {
+                            setCurrentAnnouncement(data.announcement);
+                        } else {
+                            setCurrentAnnouncement(null);
+                        }
+
+                        // Update current player's status based on Firebase
+                        if (currentPlayerId) {
+                            const updatedCurrentPlayer = fetchedPlayers.find((p) => p.id === currentPlayerId);
+                            if (updatedCurrentPlayer) {
+                                setCurrentPlayer(updatedCurrentPlayer);
+                                if (updatedCurrentPlayer.isEliminated && currentView !== "game-over") {
+                                    setMessage("💀 You have been eliminated!");
+                                    setCurrentView("game-over");
+                                }
+                            }
+                        }
+
+                        // Only auto-switch views for non-admin users
+                        if (!isAdminLoggedIn && data.status === "playing") {
+                            switch (data.currentRound) {
+                                case 1:
+                                    setCurrentView("red-light-green-light");
+                                    break;
+                                case 2:
+                                    setCurrentView("honeycomb");
+                                    break;
+                                case 3:
+                                    setCurrentView("tug-of-war");
+                                    break;
+                                case 4:
+                                    setCurrentView("marbles");
+                                    break;
+                                case 5:
+                                    setCurrentView("glass-bridge");
+                                    break;
+                                case 6:
+                                    setCurrentView("squid-game");
+                                    break;
+                                default:
+                                    if (data.currentRound > 6) {
+                                        setMessage("🎉 All games completed! Congratulations! You are the last survivor.");
+                                        setCurrentView("game-over");
+                                    }
+                                    break;
+                            }
+                        } else if (!isAdminLoggedIn && data.status === "lobby" && currentRound === 0) {
+                            setCurrentView("lobby");
+                        }
+                    } else {
+                        // Game was deleted or doesn't exist
+                        setGameId(null);
+                        setPlayers([]);
+                        setCurrentPlayer(null);
+                        if (!isAdminLoggedIn) {
+                            setCurrentPlayerId(null);
+                            setCurrentRound(0);
+                            setMessage("🔌 The game session has ended or was deleted.");
+                            setCurrentView("game-over");
+                        }
+                    }
+                });
+
+                return () => {
+                    gameRef.off('value', unsubscribe);
+                };
+            }, [gameId, currentPlayerId, currentRound, currentView, isAdminLoggedIn]);
+
+            const handleAdminLoginSuccess = () => {
+                setIsAdminLoggedIn(true);
+                setCurrentView("admin");
+            };
+
+            const handleAdminLogout = () => {
+                setIsAdminLoggedIn(false);
+                setGameId(null);
+                setCurrentPlayer(null);
+                setCurrentPlayerId(null);
+                setCurrentRound(0);
+                setPlayers([]);
+                setCurrentView("lobby");
+            };
+
+            const handleJoinGame = async (code, playerName, playerId) => {
+                setGameId(code);
+                setCurrentPlayerId(playerId);
+
+                const gamePlayersRef = database.ref(`games/${code}/players`);
+                const snapshot = await gamePlayersRef.once('value');
+                const existingPlayers = snapshot.val() || {};
+                const newPlayerNumber = Object.keys(existingPlayers).length + 1;
+
+                const newPlayer = {
+                    id: playerId,
+                    name: playerName,
+                    number: newPlayerNumber,
+                    isEliminated: false,
+                };
+
+                // Add player to Firebase
+                await database.ref(`games/${code}/players/${playerId}`).set(newPlayer);
+                setCurrentPlayer(newPlayer);
+                
+                // Only redirect to lobby if not admin
+                if (!isAdminLoggedIn) {
+                    setCurrentView("lobby");
+                }
+            };
+
+            const handleGameEnd = async (survived) => {
+                if (currentPlayer && gameId) {
+                    if (!survived) {
+                        // Update player's elimination status in Firebase
+                        await database.ref(`games/${gameId}/players/${currentPlayer.id}`).update({
+                            isEliminated: true,
+                        });
+                        setMessage("💀 You were eliminated!");
+                        setCurrentView("game-over");
+                    } else {
+                        setMessage("🎉 You survived the round!");
+                        setCurrentView("lobby"); // Return to lobby to wait for next round
+                    }
+                }
+            };
+
+            if (isLoading) {
+                return (
+                    <>
+                        <ParticleSystem />
+                        <LoadingScreen onLoadComplete={handleLoadComplete} />
+                    </>
+                );
+            }
+
+            const renderView = () => {
+                const commonEliminatedScreen = (
+                    <div className="flex flex-col items-center justify-center min-h-screen bg-squidDark text-squidLightGray screen-transition">
+                        <h2 className="text-5xl font-bold text-squidRed mb-4 font-orbitron animate-squid-pulse">
+                            💀 You are eliminated or not joined!
+                        </h2>
+                        <Button onClick={() => setCurrentView("lobby")} className="animate-bounce-in" variant="secondary">
+                            🏠 Return to Lobby
+                        </Button>
+                    </div>
+                );
+
+                // If current player is eliminated, show eliminated screen unless already on game-over or admin
+                if (currentPlayer && currentPlayer.isEliminated && currentView !== "game-over" && !isAdminLoggedIn) {
+                    return commonEliminatedScreen;
+                }
+
+                switch (currentView) {
+                    case "login":
+                        return <AdminLogin onLoginSuccess={handleAdminLoginSuccess} />;
+                    case "admin":
+                        return (
+                            <AdminDashboard
+                                onLogout={handleAdminLogout}
+                                players={players}
+                                gameId={gameId}
+                                setGameId={setGameId}
+                                currentRound={currentRound}
+                            />
+                        );
+                    case "lobby":
+                        return (
+                            <Lobby
+                                onJoinGame={handleJoinGame}
+                                players={players}
+                                gameId={gameId}
+                                onStartGame={async () => {
+                                    if (gameId) {
+                                        await database.ref(`games/${gameId}`).update({ currentRound: 1, status: "playing" });
+                                    }
+                                }}
+                                isAdmin={isAdminLoggedIn}
+                                currentRound={currentRound}
+                                currentPlayerId={currentPlayerId}
+                            />
+                        );
+                    case "red-light-green-light":
+                        if (!currentPlayer && !isAdminLoggedIn) return commonEliminatedScreen;
+                        return <RedLightGreenLight onGameEnd={handleGameEnd} player={currentPlayer} />;
+                    case "game-over":
+                        return (
+                            <GameOver
+                                message={message}
+                                coins={coins}
+                                onPlayAgain={() => {
+                                    localStorage.removeItem("squid-game-player-id");
+                                    localStorage.removeItem("squid-game-coins");
+                                    window.location.reload();
+                                }}
+                                onBackToLobby={() => setCurrentView("lobby")}
+                            />
+                        );
+                    default:
+                        return null;
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-squidDark">
+                    <ParticleSystem />
+                    {currentAnnouncement && <AnnouncementBanner announcement={currentAnnouncement} />}
+                    {renderView()}
+                    <div className="fixed bottom-4 right-4 flex space-x-2 z-50">
+                        <Button
+                            onClick={() => setCurrentView("login")}
+                            className="text-sm px-4 py-2 animate-slide-in-right"
+                            variant="accent"
+                        >
+                            🎭 Admin Login
+                        </Button>
+                        <Button
+                            onClick={() => setCurrentView("lobby")}
+                            className="text-sm px-4 py-2 animate-slide-in-right"
+                            style={{ animationDelay: '0.1s' }}
+                            variant="secondary"
+                        >
+                            🏠 Player Lobby
+                        </Button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the App
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
